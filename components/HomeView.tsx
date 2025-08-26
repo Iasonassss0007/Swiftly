@@ -126,7 +126,7 @@ export default function HomeView({ user }: HomeViewProps) {
           )}
         </h1>
         <p className="text-xl text-[#4F5F73] max-w-2xl mx-auto lg:mx-0 leading-body py-text-xl">
-          Here's what Swiftly can help you with today.
+          Here&apos;s what Swiftly can help you with today.
         </p>
         
 

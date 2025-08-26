@@ -12,6 +12,7 @@ import { PLANS } from '@/lib/stripe'
 export default function BillingPage() {
   const { user, profile, loading } = useAuth()
   const [sessionLoading, setSessionLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState<string | null>(null)
   const router = useRouter()
 
   // Session guard - check for valid session on mount
@@ -85,7 +86,6 @@ export default function BillingPage() {
   ]
 
   // Subscription handling
-  const [isLoading, setIsLoading] = useState<string | null>(null)
 
   const handleSubscribe = async (planId: string) => {
     if (!userData.id) return

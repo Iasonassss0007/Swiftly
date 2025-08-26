@@ -69,7 +69,7 @@ export default function AIPage() {
             </div>
             <h1 className="text-2xl font-semibold text-[#0F1626] mb-2">AI Chat</h1>
             <p className="text-[#4F5F73] mb-4">
-              Chat with Swiftly's AI assistant for help and insights.
+              Chat with Swiftly&apos;s AI assistant for help and insights.
             </p>
             <p className="text-sm text-[#4F5F73]/80">
               AI chat features coming soon.

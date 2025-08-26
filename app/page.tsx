@@ -280,7 +280,7 @@ export default function Home() {
               transition={{ duration: 0.8, delay: 0.2 }}
               className="text-xl md:text-2xl text-white/90 mb-8 max-w-3xl mx-auto"
             >
-              Simplify scheduling, task management, reminders, and productivity optimization with Swiftly's intelligent automation.
+              Simplify scheduling, task management, reminders, and productivity optimization with Swiftly&apos;s intelligent automation.
             </motion.p>
             
             <motion.div
