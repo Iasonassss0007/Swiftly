@@ -232,6 +232,15 @@ const config: Config = {
         '18': '4.5rem',
         '88': '22rem',
         '128': '32rem',
+        'text-xs': '0.25rem',    // 4px padding for small text
+        'text-sm': '0.375rem',   // 6px padding for small text
+        'text-base': '0.5rem',   // 8px padding for base text
+        'text-lg': '0.625rem',   // 10px padding for large text
+        'text-xl': '0.75rem',    // 12px padding for xl text
+        'text-2xl': '1rem',      // 16px padding for 2xl text
+        'text-3xl': '1.25rem',   // 20px padding for 3xl text
+        'text-4xl': '1.5rem',    // 24px padding for 4xl text
+        'text-5xl': '2rem',      // 32px padding for 5xl text
       },
       
       // Extended border radius for modern design
@@ -265,22 +274,6 @@ const config: Config = {
         'body': '1.6',           // Comfortable for body text
         'loose': '1.8',          // Very loose for readability
         'tight': '1.4',          // Slightly tight but safe
-      },
-      
-      // Custom spacing for text containers to prevent clipping
-      spacing: {
-        '18': '4.5rem',
-        '88': '22rem',
-        '128': '32rem',
-        'text-xs': '0.25rem',    // 4px padding for small text
-        'text-sm': '0.375rem',   // 6px padding for small text
-        'text-base': '0.5rem',   // 8px padding for base text
-        'text-lg': '0.625rem',   // 10px padding for large text
-        'text-xl': '0.75rem',    // 12px padding for xl text
-        'text-2xl': '1rem',      // 16px padding for 2xl text
-        'text-3xl': '1.25rem',   // 20px padding for 3xl text
-        'text-4xl': '1.5rem',    // 24px padding for 4xl text
-        'text-5xl': '2rem',      // 32px padding for 5xl text
       },
     },
   },

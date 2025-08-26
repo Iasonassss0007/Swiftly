@@ -162,7 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     
     return profileData
-  }, [])
+  }, [fetchProfile, createProfile])
 
   // Wait for session to be established before redirecting
   const waitForSession = useCallback(async (): Promise<Session | null> => {
@@ -425,7 +425,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }, [ensureProfile])
+  }, [])
 
   // Listen for auth changes - optimized to prevent infinite loops and handle stale sessions
   useEffect(() => {
