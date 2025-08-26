@@ -10,11 +10,8 @@ const supabase = createClient(
 )
 
 // Configure raw body parsing for webhook signature verification
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-}
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 async function buffer(request: NextRequest): Promise<Buffer> {
   const chunks = []
