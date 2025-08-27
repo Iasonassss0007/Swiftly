@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { Calendar, ListChecks, MessageSquare, FileText, ChevronRight } from './icons'
 import { QuickAction } from '@/types'
 import { supabase } from '@/lib/supabase'
+import type { Profile } from '@/lib/supabaseClient'
 
 interface HomeViewProps {
   user: {
@@ -32,7 +33,7 @@ export default function HomeView({ user }: HomeViewProps) {
           .from('profiles')
           .select('full_name')
           .eq('id', user.id)
-          .single()
+          .single() as { data: Pick<Profile, 'full_name'> | null, error: any }
 
         if (error) {
           console.error('Error fetching user profile:', error)
@@ -42,9 +43,9 @@ export default function HomeView({ user }: HomeViewProps) {
 
         if (profile?.full_name) {
           setUserFullName(profile.full_name)
-          console.log('User full name loaded from profiles table:', profile.full_name)
+          // console.log('User full name loaded from profiles table:', profile.full_name)
         } else {
-          console.log('No full_name found in profile, using fallback')
+          // console.log('No full_name found in profile, using fallback')
         }
       } catch (error) {
         console.error('Unexpected error fetching user profile:', error)
