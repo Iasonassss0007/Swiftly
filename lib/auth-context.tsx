@@ -70,7 +70,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
     try {
       console.log('Fetching profile for user:', userId)
-      console.log('Supabase client:', supabase)
       
       const { data, error } = await supabase
         .from('profiles')
@@ -78,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('id', userId)
         .single()
 
-      console.log('Profile fetch response:', { data, error })
+      // console.log('Profile fetch response:', { data, error })
 
       if (error) {
         console.error('Profile fetch error:', error)
@@ -91,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return null
       }
 
-      console.log('Profile fetched successfully:', data)
+      // console.log('Profile fetched successfully:', data)
       return data
     } catch (error) {
       console.error('Unexpected error fetching profile:', error)
@@ -102,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Create user profile in profiles table - memoized to prevent recreation
   const createProfile = useCallback(async (userId: string, fullName: string, email: string): Promise<{ error: any }> => {
     try {
-      console.log('Creating profile for user:', userId, 'with name:', fullName, 'email:', email)
+      // console.log('Creating profile for user:', userId, 'with name:', fullName, 'email:', email)
       
       // First check if profile already exists
       const { data: existingProfile, error: checkError } = await supabase
@@ -117,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       if (existingProfile) {
-        console.log('Profile already exists for user:', userId)
+        // console.log('Profile already exists for user:', userId)
         return { error: null }
       }
       
@@ -130,7 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           avatar_url: null
         })
         .select()
-        .single()
+        .single() as { data: Profile | null, error: any }
 
       if (error) {
         console.error('Profile creation error:', error)
@@ -145,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Update the profile state immediately
       setProfile(data)
-      console.log('Profile created successfully:', data)
+      // console.log('Profile created successfully:', data)
       return { error: null }
     } catch (error) {
       console.error('Unexpected error creating profile:', error)
@@ -155,17 +154,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Ensure profile exists and is loaded
   const ensureProfile = useCallback(async (userId: string, fullName: string, email: string): Promise<Profile | null> => {
-    console.log('ensureProfile called with:', { userId, fullName, email })
+    // console.log('ensureProfile called with:', { userId, fullName, email })
     
     // First try to fetch existing profile
     let profileData = await fetchProfile(userId)
-    console.log('Initial profile fetch result:', profileData)
+          // console.log('Initial profile fetch result:', profileData)
     
     if (!profileData) {
       // Profile doesn't exist, create it
-      console.log('Profile not found, creating new profile...')
+              // console.log('Profile not found, creating new profile...')
       const createResult = await createProfile(userId, fullName, email)
-      console.log('Profile creation result:', createResult)
+              // console.log('Profile creation result:', createResult)
       
       if (createResult.error) {
         console.error('Failed to create profile:', createResult.error)
@@ -173,12 +172,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       // Fetch the newly created profile
-      console.log('Fetching newly created profile...')
+              // console.log('Fetching newly created profile...')
       profileData = await fetchProfile(userId)
-      console.log('New profile fetch result:', profileData)
+              // console.log('New profile fetch result:', profileData)
     }
     
-    console.log('ensureProfile returning:', profileData)
+          // console.log('ensureProfile returning:', profileData)
     return profileData
   }, [fetchProfile, createProfile])
 
@@ -245,18 +244,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (data?.user) {
-        console.log('User created, ensuring profile exists...', data.user.id)
+        // console.log('User created, ensuring profile exists...', data.user.id)
         
         // Get the current session immediately
         const { data: { session } } = await supabase.auth.getSession()
         
         if (session) {
-          console.log('Session available, ensuring profile exists...')
+          // console.log('Session available, ensuring profile exists...')
           // Ensure profile exists and is loaded
           const profileData = await ensureProfile(data.user.id, fullName, email)
           
           if (profileData) {
-            console.log('Profile ready, redirecting to dashboard...')
+            // console.log('Profile ready, redirecting to dashboard...')
             // Set the user and profile state before redirecting
             setUser(data.user)
             setProfile(profileData)
@@ -272,12 +271,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await new Promise(resolve => setTimeout(resolve, 1000))
           
           const { data: { session: retrySession } } = await supabase.auth.getSession()
-          if (retrySession) {
-            console.log('Session established on retry, ensuring profile...')
-            const profileData = await ensureProfile(data.user.id, fullName, email)
+                  if (retrySession) {
+          // console.log('Session established on retry, ensuring profile...')
+          const profileData = await ensureProfile(data.user.id, fullName, email)
             
             if (profileData) {
-              console.log('Profile ready on retry, redirecting to dashboard...')
+              // console.log('Profile ready on retry, redirecting to dashboard...')
               setUser(data.user)
               setProfile(profileData)
               setSession(retrySession)
@@ -324,13 +323,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession()
         
         if (session) {
-          console.log('Session available, ensuring profile exists...')
+          // console.log('Session available, ensuring profile exists...')
           // Ensure profile exists and is loaded
           const fullName = data.user.user_metadata?.full_name || 'User'
           const profileData = await ensureProfile(data.user.id, fullName, data.user.email || email)
           
           if (profileData) {
-            console.log('Profile ready, redirecting to dashboard...')
+            // console.log('Profile ready, redirecting to dashboard...')
             // Set the user and profile state before redirecting
             setUser(data.user)
             setProfile(profileData)
@@ -352,7 +351,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const profileData = await ensureProfile(data.user.id, fullName, data.user.email || email)
             
             if (profileData) {
-              console.log('Profile ready on retry, redirecting to dashboard...')
+              // console.log('Profile ready on retry, redirecting to dashboard...')
               setUser(data.user)
               setProfile(profileData)
               setSession(retrySession)
@@ -540,7 +539,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           // Always call ensureProfile with timeout fallback
           try {
-            console.log('SIGNED_IN: Ensuring profile exists...')
+            // console.log('SIGNED_IN: Ensuring profile exists...')
             const fullName = session.user.user_metadata?.full_name || 'User'
             
             // Create a timeout promise for profile fetch
@@ -554,17 +553,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             
             if (profileData) {
               setProfile(profileData)
-              console.log('Profile ready, redirecting to dashboard...')
+              // console.log('Profile ready, redirecting to dashboard...')
               router.push('/dashboard')
             } else {
               console.error('Failed to ensure profile during SIGNED_IN')
               // Still redirect even if profile fails
-              console.log('Profile failed, redirecting to dashboard anyway...')
+              // console.log('Profile failed, redirecting to dashboard anyway...')
               router.push('/dashboard')
             }
           } catch (error: any) {
             if (error?.message === 'Profile fetch timeout') {
-              console.log('Profile fetch timeout, forcing redirect')
+              // console.log('Profile fetch timeout, forcing redirect')
             } else {
               console.error('Error ensuring profile during SIGNED_IN:', error)
             }

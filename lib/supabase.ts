@@ -1,22 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables')
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true
-  },
-  db: {
-    schema: 'api' // Explicitly set the schema to 'api'
-  }
-})
+// Re-export from the new client structure
+export { supabaseClient as supabase } from './supabaseClient'
 
 export type Database = {
   api: {
@@ -49,25 +32,34 @@ export type Database = {
       }
       user_sessions: {
         Row: {
-          id: number
+          id: string
           user_id: string
-          session_data: any
           created_at: string
-          updated_at: string
+          ip_address: string | null
+          user_agent: string | null
+          expires_at: string | null
+          metadata: any
+          session_type: string | null
         }
         Insert: {
-          id?: number
+          id?: string
           user_id: string
-          session_data: any
           created_at?: string
-          updated_at?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          expires_at?: string | null
+          metadata?: any
+          session_type?: string | null
         }
         Update: {
-          id?: number
+          id?: string
           user_id?: string
-          session_data?: any
           created_at?: string
-          updated_at?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          expires_at?: string | null
+          metadata?: any
+          session_type?: string | null
         }
       }
     }

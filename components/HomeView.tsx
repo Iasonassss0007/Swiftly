@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Calendar, ListChecks, MessageSquare, FileText, ChevronRight } from './icons'
 import { QuickAction } from '@/types'
-import { supabase } from '@/lib/supabase'
+import { useProfile } from '@/lib/useProfile'
 
 interface HomeViewProps {
   user: {
@@ -16,46 +16,8 @@ interface HomeViewProps {
 }
 
 export default function HomeView({ user }: HomeViewProps) {
+  const { userFullName, isLoading } = useProfile()
   const [askInput, setAskInput] = useState('')
-  const [userFullName, setUserFullName] = useState(user.name)
-  const [isLoadingName, setIsLoadingName] = useState(false)
-
-  // Fetch user's full name from profiles table on component mount and when user changes
-  useEffect(() => {
-    const fetchUserFullName = async () => {
-      if (!user.id) return
-      
-      setIsLoadingName(true)
-      try {
-        console.log('Fetching full name for user:', user.id)
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', user.id)
-          .single()
-
-        if (error) {
-          console.error('Error fetching user profile:', error)
-          // Keep the fallback name from props
-          return
-        }
-
-        if (profile?.full_name) {
-          setUserFullName(profile.full_name)
-          console.log('User full name loaded from profiles table:', profile.full_name)
-        } else {
-          console.log('No full_name found in profile, using fallback')
-        }
-      } catch (error) {
-        console.error('Unexpected error fetching user profile:', error)
-      } finally {
-        setIsLoadingName(false)
-      }
-    }
-
-    // Always fetch to ensure we have the latest data
-    fetchUserFullName()
-  }, [user.id])
 
   const getGreeting = () => {
     const hour = new Date().getHours()
@@ -119,10 +81,10 @@ export default function HomeView({ user }: HomeViewProps) {
           - py-text-4xl adds vertical padding to prevent container clipping
         */}
         <h1 className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-[#111C59] to-[#4F5F73] bg-clip-text text-transparent mb-6 leading-tight py-text-4xl">
-          {getGreeting()}, {isLoadingName ? (
+          {getGreeting()}, {isLoading ? (
             <span className="inline-block w-8 h-8 border-2 border-[#111C59]/20 border-t-[#111C59] rounded-full animate-spin"></span>
           ) : (
-            userFullName
+            userFullName || user.name
           )}
         </h1>
         <p className="text-xl text-[#4F5F73] max-w-2xl mx-auto lg:mx-0 leading-body py-text-xl">

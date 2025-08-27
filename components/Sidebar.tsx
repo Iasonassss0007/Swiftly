@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
+import type { Profile } from '@/lib/supabaseClient'
 import {
   Home,
   ListChecks,
@@ -53,7 +54,7 @@ export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }
           .from('profiles')
           .select('full_name, email')
           .eq('id', user.id)
-          .single()
+          .single() as { data: Pick<Profile, 'full_name' | 'email'> | null, error: any }
 
         if (error) {
           console.error('Error fetching user profile in sidebar:', error)
