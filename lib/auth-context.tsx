@@ -621,14 +621,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       listenerSetupRef.current = false
       // Don't reset global flag on cleanup to handle Fast Refresh
     }
-  }, []) // Remove dependencies to prevent re-running
+  }, [ensureProfile, router, user?.id]) // Add missing dependencies for proper hook behavior
 
   // Get initial session only once on mount
   useEffect(() => {
     if (!initialSessionRef.current) {
       getInitialSession()
     }
-  }, []) // Remove getInitialSession dependency to prevent re-running
+  }, [getInitialSession]) // Add getInitialSession dependency for proper hook behavior
 
   const value = {
     user,

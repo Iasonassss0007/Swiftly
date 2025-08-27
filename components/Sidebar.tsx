@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
+import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
 import {
   Home,
@@ -284,9 +285,11 @@ export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }
           >
             <span className="flex-shrink-0">
               {user.avatarUrl ? (
-                <img
+                <Image
                   src={user.avatarUrl}
                   alt={userFullName}
+                  width={32}
+                  height={32}
                   className="w-8 h-8 rounded-full"
                 />
               ) : (

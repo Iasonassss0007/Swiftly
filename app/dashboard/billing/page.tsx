@@ -89,7 +89,7 @@ export default function BillingPage() {
                 Current Plan: Free
               </h2>
               <p className="text-[#4F5F73]">
-                You're currently on the free plan
+                You&apos;re currently on the free plan
               </p>
             </div>
             
@@ -142,7 +142,7 @@ export default function BillingPage() {
               Premium Plans Coming Soon
             </h3>
             <p className="text-lg mb-6 opacity-90">
-              We're working on premium features including advanced analytics, team collaboration, and priority support.
+              We&apos;re working on premium features including advanced analytics, team collaboration, and priority support.
             </p>
             <div className="bg-white/10 rounded-lg p-4 inline-block">
               <p className="text-sm opacity-90">
