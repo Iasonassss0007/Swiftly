@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from './auth-context'
-import { supabase } from './supabase'
 
 export function useProfile() {
   const { user, profile } = useAuth()
@@ -21,20 +20,13 @@ export function useProfile() {
         return
       }
 
-      // Otherwise, fetch the profile
+      // Otherwise, fetch the profile using API route
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', user.id)
-          .single()
+        const response = await fetch(`/api/profile?userId=${user.id}`)
+        const result = await response.json()
 
-        if (error) {
-          console.error('Error fetching profile:', error)
-          // Fallback to user metadata or default
-          setUserFullName(user.user_metadata?.full_name || 'User')
-        } else if (data?.full_name) {
-          setUserFullName(data.full_name)
+        if (response.ok && result.profile?.full_name) {
+          setUserFullName(result.profile.full_name)
         } else {
           // Fallback to user metadata or default
           setUserFullName(user.user_metadata?.full_name || 'User')
