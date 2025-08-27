@@ -52,7 +52,7 @@ export default function Layout({ children, user }: LayoutProps) {
 
 
   return (
-    <div className="h-screen flex bg-[#F8FAFC]">
+    <div className="h-screen flex bg-[#F8FAFC] font-libre-franklin">
       {/* Desktop Sidebar */}
       <div className="hidden lg:block sidebar">
         <Sidebar

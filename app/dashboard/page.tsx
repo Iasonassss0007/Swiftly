@@ -41,10 +41,10 @@ export default function DashboardPage() {
   // Show loading state while checking session or auth context
   if (loading || sessionLoading) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center font-libre-franklin">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-[#111C59]/20 border-t-[#111C59] rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[#4F5F73]">Loading your dashboard...</p>
+          <p className="text-[#4F5F73] font-libre-franklin">Loading your dashboard...</p>
         </div>
       </div>
     )

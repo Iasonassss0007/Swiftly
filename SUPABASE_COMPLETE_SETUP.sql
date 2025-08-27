@@ -1,9 +1,13 @@
 -- =====================================================
--- Swiftly App - Supabase Database Setup
+-- Swiftly App - Complete Supabase Database Setup
 -- =====================================================
--- This script sets up the complete database structure
--- for the Swiftly application including profiles and
--- user sessions tracking with proper RLS policies.
+-- This single file contains everything needed to set up
+-- your Swiftly application database in Supabase.
+-- 
+-- Instructions:
+-- 1. Copy this entire file
+-- 2. Go to Supabase Dashboard → SQL Editor
+-- 3. Paste and click Run
 -- =====================================================
 
 -- Enable necessary extensions
@@ -258,31 +262,7 @@ GRANT SELECT ON api.user_profile_summary TO authenticated;
 GRANT SELECT ON api.recent_user_sessions TO authenticated;
 
 -- =====================================================
--- 10. CREATE SAMPLE DATA (OPTIONAL - FOR TESTING)
--- =====================================================
-
--- Uncomment the following lines if you want to create sample data for testing
-
-/*
--- Insert sample profile (replace with actual test data)
-INSERT INTO api.profiles (id, full_name, email, avatar_url) VALUES
-(
-    '00000000-0000-0000-0000-000000000000',
-    'Test User',
-    'test@example.com',
-    'https://via.placeholder.com/150'
-);
-
--- Insert sample session (replace with actual test data)
-INSERT INTO api.user_sessions (user_id, session_data) VALUES
-(
-    '00000000-0000-0000-0000-000000000000',
-    '{"event": "SIGNED_IN", "device": "web", "user_agent": "Mozilla/5.0 Test Browser"}'
-);
-*/
-
--- =====================================================
--- 11. VERIFICATION QUERIES
+-- 10. VERIFICATION QUERIES
 -- =====================================================
 
 -- Verify tables were created

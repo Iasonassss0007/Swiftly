@@ -70,14 +70,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
     try {
       console.log('Fetching profile for user:', userId)
+      console.log('Supabase client:', supabase)
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single()
 
+      console.log('Profile fetch response:', { data, error })
+
       if (error) {
         console.error('Profile fetch error:', error)
+        console.error('Error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        })
         return null
       }
 
@@ -145,22 +155,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Ensure profile exists and is loaded
   const ensureProfile = useCallback(async (userId: string, fullName: string, email: string): Promise<Profile | null> => {
+    console.log('ensureProfile called with:', { userId, fullName, email })
+    
     // First try to fetch existing profile
     let profileData = await fetchProfile(userId)
+    console.log('Initial profile fetch result:', profileData)
     
     if (!profileData) {
       // Profile doesn't exist, create it
       console.log('Profile not found, creating new profile...')
       const createResult = await createProfile(userId, fullName, email)
+      console.log('Profile creation result:', createResult)
+      
       if (createResult.error) {
         console.error('Failed to create profile:', createResult.error)
         return null
       }
       
       // Fetch the newly created profile
+      console.log('Fetching newly created profile...')
       profileData = await fetchProfile(userId)
+      console.log('New profile fetch result:', profileData)
     }
     
+    console.log('ensureProfile returning:', profileData)
     return profileData
   }, [fetchProfile, createProfile])
 
@@ -229,36 +247,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data?.user) {
         console.log('User created, ensuring profile exists...', data.user.id)
         
-        // Wait for session to be established
-        const session = await waitForSession()
+        // Get the current session immediately
+        const { data: { session } } = await supabase.auth.getSession()
+        
         if (session) {
+          console.log('Session available, ensuring profile exists...')
           // Ensure profile exists and is loaded
           const profileData = await ensureProfile(data.user.id, fullName, email)
+          
           if (profileData) {
             console.log('Profile ready, redirecting to dashboard...')
+            // Set the user and profile state before redirecting
+            setUser(data.user)
+            setProfile(profileData)
+            setSession(session)
             router.push('/dashboard')
           } else {
             console.error('Failed to create profile during signup')
             return { error: 'Failed to create user profile' }
           }
         } else {
-          // Fallback: try to get session one more time after a longer delay
-          console.log('Session waiting failed, trying fallback approach...')
-          await new Promise(resolve => setTimeout(resolve, 3000))
+          console.log('No session available, waiting for session establishment...')
+          // Wait a bit for session to be established
+          await new Promise(resolve => setTimeout(resolve, 1000))
           
-          const { data: { session: fallbackSession } } = await supabase.auth.getSession()
-          if (fallbackSession) {
-            // Ensure profile exists and is loaded
+          const { data: { session: retrySession } } = await supabase.auth.getSession()
+          if (retrySession) {
+            console.log('Session established on retry, ensuring profile...')
             const profileData = await ensureProfile(data.user.id, fullName, email)
+            
             if (profileData) {
-              console.log('Profile ready via fallback, redirecting to dashboard...')
+              console.log('Profile ready on retry, redirecting to dashboard...')
+              setUser(data.user)
+              setProfile(profileData)
+              setSession(retrySession)
               router.push('/dashboard')
             } else {
               console.error('Failed to create profile during signup')
               return { error: 'Failed to create user profile' }
             }
           } else {
-            return { error: 'Failed to establish session after multiple attempts' }
+            console.error('Session still not available after retry')
+            return { error: 'Failed to establish session after signup' }
           }
         }
       }
@@ -290,36 +320,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data?.user) {
         console.log('User signed in, ensuring profile exists...', data.user.id)
         
-        // Wait for session to be established
-        const session = await waitForSession()
+        // Get the current session immediately
+        const { data: { session } } = await supabase.auth.getSession()
+        
         if (session) {
+          console.log('Session available, ensuring profile exists...')
           // Ensure profile exists and is loaded
           const fullName = data.user.user_metadata?.full_name || 'User'
           const profileData = await ensureProfile(data.user.id, fullName, data.user.email || email)
+          
           if (profileData) {
             console.log('Profile ready, redirecting to dashboard...')
+            // Set the user and profile state before redirecting
+            setUser(data.user)
+            setProfile(profileData)
+            setSession(session)
             router.push('/dashboard')
           } else {
             console.error('Failed to ensure profile during signin')
             return { error: 'Failed to load user profile' }
           }
         } else {
-          // Fallback: try to get session one more time after a longer delay
-          console.log('Session waiting failed, trying fallback approach...')
-          await new Promise(resolve => setTimeout(resolve, 3000))
+          console.log('No session available, waiting for session establishment...')
+          // Wait a bit for session to be established
+          await new Promise(resolve => setTimeout(resolve, 1000))
           
-          const { data: { session: fallbackSession } } = await supabase.auth.getSession()
-          if (fallbackSession) {
+          const { data: { session: retrySession } } = await supabase.auth.getSession()
+          if (retrySession) {
+            console.log('Session established on retry, ensuring profile...')
             const fullName = data.user.user_metadata?.full_name || 'User'
             const profileData = await ensureProfile(data.user.id, fullName, data.user.email || email)
+            
             if (profileData) {
-              console.log('Profile ready via fallback, redirecting to dashboard...')
+              console.log('Profile ready on retry, redirecting to dashboard...')
+              setUser(data.user)
+              setProfile(profileData)
+              setSession(retrySession)
               router.push('/dashboard')
             } else {
               return { error: 'Failed to load user profile' }
             }
           } else {
-            return { error: 'Failed to establish session after multiple attempts' }
+            console.error('Session still not available after retry')
+            return { error: 'Failed to establish session after sign in' }
           }
         }
       }

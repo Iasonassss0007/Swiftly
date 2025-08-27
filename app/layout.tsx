@@ -1,9 +1,13 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Libre_Franklin } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/lib/auth-context'
 
-const inter = Inter({ subsets: ['latin'] })
+const libreFranklin = Libre_Franklin({ 
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700', '800', '900'],
+  variable: '--font-libre-franklin'
+})
 
 export const metadata: Metadata = {
   title: 'Swiftly - AI-Powered Admin Life Concierge',
@@ -17,7 +21,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={libreFranklin.className}>
         <AuthProvider>
           {children}
         </AuthProvider>

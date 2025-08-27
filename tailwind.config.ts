@@ -153,9 +153,10 @@ const config: Config = {
       },
       
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Libre Franklin', 'system-ui', 'sans-serif'],
+        display: ['Libre Franklin', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+        'libre-franklin': ['Libre Franklin', 'system-ui', 'sans-serif'],
       },
       
       // Global Typography Rules to Prevent Text Clipping

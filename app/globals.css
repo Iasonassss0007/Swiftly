@@ -9,8 +9,13 @@
   }
   
   body {
-    @apply bg-[#F8FAFC] text-[#0F1626];
+    @apply bg-[#F8FAFC] text-[#0F1626] font-libre-franklin;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     overflow-x: hidden;
+  }
+  
+  /* Ensure all text elements use Libre Franklin */
+  h1, h2, h3, h4, h5, h6, p, span, div, button, input, textarea, label {
+    font-family: 'Libre Franklin', system-ui, sans-serif;
   }
 }
