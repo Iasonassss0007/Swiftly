@@ -7,7 +7,7 @@ import { useAuth, createUserData } from '@/lib/auth-context'
 import { supabase } from '@/lib/supabase'
 import { motion } from 'framer-motion'
 
-// Define the same plans as shown on the homepage
+// Define the available plans
 const plans = [
   {
     name: 'Starter Plan',
@@ -21,8 +21,7 @@ const plans = [
       'Standard email support'
     ],
     cta: 'Start Free Trial',
-    popular: true,
-    current: true // Mark as current plan for demo
+    popular: true
   },
   {
     name: 'Pro Plan',
@@ -37,8 +36,7 @@ const plans = [
       'Custom reminders and notifications'
     ],
     cta: 'Upgrade to Pro',
-    popular: false,
-    current: false
+    popular: false
   },
   {
     name: 'Enterprise Plan',
@@ -53,8 +51,7 @@ const plans = [
       'Priority assistance'
     ],
     cta: 'Contact Sales',
-    popular: false,
-    current: false
+    popular: false
   }
 ]
 
@@ -123,71 +120,11 @@ export default function BillingPage() {
             Billing & Plans
           </h1>
           <p className="text-xl text-[#4F5F73] max-w-3xl mx-auto">
-            Choose the plan that fits your workflow. Start free and scale as you grow.
+            Choose the plan that fits your workflow. All plans include a 14-day free trial.
           </p>
         </motion.div>
 
-        {/* Current Plan Information */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="max-w-4xl mx-auto mb-12"
-        >
-          <div className="bg-white border-2 border-[#111C59] rounded-xl p-8 shadow-lg">
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-[#0F1626] mb-2">
-                Current Plan: Starter Plan
-              </h2>
-              <p className="text-[#4F5F73]">
-                You&apos;re currently on the Starter Plan
-              </p>
-            </div>
-            
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-[#F8FAFC] rounded-lg p-4">
-                <h3 className="font-semibold text-[#0F1626] mb-2">Plan Features</h3>
-                <ul className="space-y-2 text-[#4F5F73]">
-                  <li className="flex items-center">
-                    <svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Access to fundamental task management features
-                  </li>
-                  <li className="flex items-center">
-                    <svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Calendar overview for basic scheduling
-                  </li>
-                  <li className="flex items-center">
-                    <svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Up to 20 AI-generated suggestions per month
-                  </li>
-                  <li className="flex items-center">
-                    <svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Standard email support
-                  </li>
-                </ul>
-              </div>
-              
-              <div className="bg-[#F8FAFC] rounded-lg p-4">
-                <h3 className="font-semibold text-[#0F1626] mb-2">Account Details</h3>
-                <div className="space-y-2 text-[#4F5F73]">
-                  <p><span className="font-medium">Email:</span> {userData.email}</p>
-                  <p><span className="font-medium">Member since:</span> {userData.memberSince || 'Recently'}</p>
-                  <p><span className="font-medium">Status:</span> Active</p>
-                  <p><span className="font-medium">Plan:</span> Starter Plan</p>
-                  <p><span className="font-medium">Next billing:</span> January 2025</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </motion.div>
+
 
         {/* Available Plans Section */}
         <motion.div
@@ -213,21 +150,12 @@ export default function BillingPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
                 className={`relative bg-white border-2 rounded-xl p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl flex flex-col h-full ${
-                  plan.current 
-                    ? 'border-[#111C59] ring-2 ring-[#111C59] shadow-xl' 
-                    : plan.popular 
+                  plan.popular 
                     ? 'border-[#111C59] ring-2 ring-[#111C59] shadow-xl' 
                     : 'border-[#ADB3BD]'
                 }`}
               >
-                {plan.current && (
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <span className="bg-[#111C59] text-white px-4 py-2 rounded-full text-sm font-semibold">
-                      Current Plan
-                    </span>
-                  </div>
-                )}
-                {plan.popular && !plan.current && (
+                {plan.popular && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                     <span className="bg-[#4F5F73] text-white px-4 py-2 rounded-full text-sm font-semibold">
                       Most Popular
@@ -266,15 +194,12 @@ export default function BillingPage() {
                 <div className="mt-auto">
                   <button 
                     className={`w-full py-3 px-6 rounded-lg font-semibold transition-all duration-300 ${
-                      plan.current
-                        ? 'bg-[#4F5F73] text-white cursor-not-allowed'
-                        : plan.popular
+                      plan.popular
                         ? 'bg-[#111C59] text-white hover:bg-[#0F1626]'
                         : 'bg-[#4F5F73] text-white hover:bg-[#111C59]'
                     }`}
-                    disabled={plan.current}
                   >
-                    {plan.current ? 'Current Plan' : plan.cta}
+                    {plan.cta}
                   </button>
                 </div>
               </motion.div>
