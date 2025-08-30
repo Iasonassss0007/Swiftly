@@ -655,7 +655,7 @@ function convertToTaskCreationResult(result: AITaskOperationResult): TaskCreatio
     rawExtraction: result.task ? {
       title: result.task.title,
       description: result.task.description || undefined,
-      dueDate: result.task.due_date ? new Date(result.task.due_date) : undefined,
+      dueDate: result.task.dueDate ? result.task.dueDate : undefined,
       priority: result.task.priority,
       status: result.task.status,
       tags: result.task.tags || undefined

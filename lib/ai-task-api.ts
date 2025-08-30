@@ -157,7 +157,7 @@ export class AITaskAPIService {
       description: params.description || null,
       status: params.status || 'todo',
       priority: params.priority || 'medium',
-      due_date: params.dueDate || params.due_date || null,
+      dueDate: params.dueDate || params.due_date || null,
       completed: params.completed || false,
       tags: params.tags || null,
       assignees: params.assignees || null,
@@ -360,21 +360,21 @@ export class AITaskAPIService {
    * Reschedule a task
    */
   private async rescheduleTask(taskId: string, dueDate: string | Date | null): Promise<AITaskOperationResult> {
-    let due_date: string | null = null
+    let processedDueDate: Date | null = null
     
     if (dueDate) {
       if (typeof dueDate === 'string') {
-        due_date = new Date(dueDate).toISOString()
+        processedDueDate = new Date(dueDate)
       } else {
-        due_date = dueDate.toISOString()
+        processedDueDate = dueDate
       }
     }
 
-    const result = await this.updateTask(taskId, { due_date })
+    const result = await this.updateTask(taskId, { dueDate: processedDueDate })
     
     if (result.success) {
-      result.message = due_date 
-        ? `Task rescheduled to ${new Date(due_date).toLocaleDateString()}: ${taskId}`
+      result.message = processedDueDate 
+        ? `Task rescheduled to ${processedDueDate.toLocaleDateString()}: ${taskId}`
         : `Task due date removed: ${taskId}`
     }
     
@@ -476,13 +476,13 @@ export class AITaskAPIService {
 
     if (filter.dueBefore) {
       filtered = filtered.filter(task => 
-        task.due_date && new Date(task.due_date) <= filter.dueBefore!
+        task.dueDate && task.dueDate <= filter.dueBefore!
       )
     }
 
     if (filter.dueAfter) {
       filtered = filtered.filter(task => 
-        task.due_date && new Date(task.due_date) >= filter.dueAfter!
+        task.dueDate && task.dueDate >= filter.dueAfter!
       )
     }
 
@@ -546,11 +546,11 @@ export class AITaskAPIService {
       highPriority: tasks.filter(t => t.priority === 'high').length,
       mediumPriority: tasks.filter(t => t.priority === 'medium').length,
       lowPriority: tasks.filter(t => t.priority === 'low').length,
-      overdue: tasks.filter(t => t.due_date && new Date(t.due_date) < new Date()).length,
+      overdue: tasks.filter(t => t.dueDate && t.dueDate < new Date()).length,
       dueToday: tasks.filter(t => {
-        if (!t.due_date) return false
+        if (!t.dueDate) return false
         const today = new Date().toDateString()
-        return new Date(t.due_date).toDateString() === today
+        return t.dueDate.toDateString() === today
       }).length
     }
 
