@@ -13,6 +13,7 @@
  */
 
 import { getTaskCache, Task } from './task-cache'
+import { parseDateFromAIResponse, getCurrentContext, type AIRealTimeContext } from './ai-context-provider'
 
 /**
  * Extracted task data from AI response
@@ -86,10 +87,12 @@ export class AITaskService {
 
   /**
    * Main method to process AI response and create tasks if detected
+   * Now enhanced with real-time context for better date parsing
    */
   async processAIResponse(
     userMessage: string, 
-    aiResponse: string
+    aiResponse: string,
+    realTimeContext?: AIRealTimeContext
   ): Promise<TaskCreationResult> {
     try {
       console.log('Processing AI response for task detection...')
@@ -119,8 +122,8 @@ export class AITaskService {
 
       console.log('Task creation intent detected!')
 
-      // Step 2: Extract task data from the AI response
-      const extractedTask = this.extractTaskData(userMessage, aiResponse)
+      // Step 2: Extract task data from the AI response with real-time context
+      const extractedTask = this.extractTaskData(userMessage, aiResponse, realTimeContext)
       
       if (!extractedTask.title || extractedTask.title.length < 2) {
         console.log('Could not extract valid task title')
@@ -257,8 +260,13 @@ export class AITaskService {
 
   /**
    * Extract task data from the user message and AI response
+   * Enhanced with real-time context for accurate date parsing
    */
-  private extractTaskData(userMessage: string, aiResponse: string): ExtractedTask {
+  private extractTaskData(
+    userMessage: string, 
+    aiResponse: string, 
+    realTimeContext?: AIRealTimeContext
+  ): ExtractedTask {
     const combinedText = `${userMessage} ${aiResponse}`
     
     const task: ExtractedTask = {
@@ -273,8 +281,8 @@ export class AITaskService {
     // Extract description (use AI response as description if it's helpful)
     task.description = this.extractTaskDescription(userMessage, aiResponse)
 
-    // Extract due date
-    task.dueDate = this.extractDueDate(combinedText)
+    // Extract due date with real-time context
+    task.dueDate = this.extractDueDate(combinedText, realTimeContext)
 
     // Extract priority
     task.priority = this.extractPriority(combinedText)
@@ -430,6 +438,8 @@ export class AITaskService {
       }
     }
 
+    // If real-time parsing fails, fall back to existing logic
+    console.log('Using fallback date parsing')
     return undefined
   }
 
@@ -512,12 +522,14 @@ export function createAITaskService(userId: string): AITaskService {
 /**
  * Utility function to process AI response for task creation
  * This is the main entry point for the AI chat integration
+ * Enhanced with real-time context for better date handling
  */
 export async function processAIForTasks(
   userId: string,
   userMessage: string,
-  aiResponse: string
+  aiResponse: string,
+  realTimeContext?: AIRealTimeContext
 ): Promise<TaskCreationResult> {
   const service = createAITaskService(userId)
-  return await service.processAIResponse(userMessage, aiResponse)
+  return await service.processAIResponse(userMessage, aiResponse, realTimeContext)
 }

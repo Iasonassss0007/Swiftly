@@ -4,6 +4,7 @@ import { useState, FormEvent, useRef, useEffect, useCallback, useMemo } from 're
 import { motion } from 'framer-motion'
 import { processAIForTasks, TaskCreationResult } from '@/lib/ai-task-service'
 import { emitTaskCreated } from '@/lib/use-ai-task-integration'
+import { createEnhancedContext, createTaskPrompt, logContextInfo, type EnhancedUserContext } from '@/lib/ai-context-provider'
 
 interface CleanAIChatProps {
   className?: string
@@ -171,8 +172,27 @@ export default function CleanAIChat({ className = '', userContext, sessionId }: 
     setIsLoading(true)
 
     try {
+      // Create enhanced context with real-time information
+      let enhancedContext: EnhancedUserContext | null = null
+      let enhancedPrompt = userQuestion
+      
+      if (userContext?.user_id) {
+        enhancedContext = createEnhancedContext(
+          userContext.user_id,
+          userContext.preferences,
+          userContext.tasks,
+          userContext.reminders
+        )
+        
+        // Create task-aware prompt with real-time context
+        enhancedPrompt = createTaskPrompt(userQuestion, enhancedContext)
+        
+        // Log context for debugging
+        logContextInfo(enhancedContext)
+      }
+      
       const requestBody: any = {
-        content: userQuestion
+        content: enhancedPrompt // Use enhanced prompt instead of raw user question
       }
 
       if (userContext) {
@@ -202,14 +222,15 @@ export default function CleanAIChat({ className = '', userContext, sessionId }: 
         setCurrentSessionId(data.session_id)
       }
 
-      // Process AI response for task creation (if user context includes user_id)
-      if (userContext?.user_id) {
+      // Process AI response for task creation with enhanced context
+      if (userContext?.user_id && enhancedContext) {
         try {
-          console.log('Processing AI response for task creation...')
+          console.log('Processing AI response for task creation with real-time context...')
           const taskResult = await processAIForTasks(
             userContext.user_id,
             userQuestion,
-            data.response
+            data.response,
+            enhancedContext.realTime // Pass real-time context for better date parsing
           )
           
           if (taskResult.success && taskResult.task) {

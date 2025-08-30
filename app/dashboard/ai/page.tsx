@@ -58,13 +58,16 @@ export default function AIPage() {
   // Use real user data from auth context with proper fallbacks
   const userData = createUserData(user, profile)
 
-  // Create user context for AI
+  // Create enhanced user context for AI with preferences
   const userContext = {
     user_id: userData.id,
     preferences: {
       name: userData.name,
-      email: userData.email
-    }
+      email: userData.email,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+    },
+    tasks: [], // Will be populated by AI context provider
+    reminders: [] // Will be populated by AI context provider
   }
 
   return (
