@@ -28,10 +28,12 @@ interface UserContext {
 interface Message {
   id: string
   content: string
-  type: 'user' | 'ai' | 'error' | 'task-created'
+  type: 'user' | 'ai' | 'error'
   timestamp: Date
   taskResult?: TaskCreationResult // For task creation messages
   hasTask?: boolean // Indicates if this AI message created a task
+  isTaskCreated?: boolean // Indicates if this AI message confirmed task creation
+  taskId?: string // ID of the created task
 }
 
 export default function CleanAIChat({ className = '', userContext, sessionId }: CleanAIChatProps) {
@@ -135,12 +137,19 @@ export default function CleanAIChat({ className = '', userContext, sessionId }: 
   }, [question, handleTextareaResize])
 
   // Add a new message to the chat without affecting existing messages
-  const addMessage = useCallback((content: string, type: 'user' | 'ai' | 'error') => {
+  const addMessage = useCallback((
+    content: string, 
+    type: 'user' | 'ai' | 'error', 
+    isTaskCreated?: boolean,
+    taskId?: string
+  ) => {
     const message: Message = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       content,
       type,
-      timestamp: new Date()
+      timestamp: new Date(),
+      isTaskCreated,
+      taskId
     }
     
     setMessages(prev => {
@@ -327,7 +336,7 @@ export default function CleanAIChat({ className = '', userContext, sessionId }: 
     const MessageBubbleComponent = ({ message, index }: { message: Message; index: number }) => {
       const isUser = message.type === 'user'
       const isError = message.type === 'error'
-      const isTaskCreated = message.type === 'task-created'
+      const isTaskCreated = message.type === 'ai' && message.isTaskCreated
       const isAIWithTask = message.type === 'ai' && message.hasTask
       const isLast = index === messages.length - 1
       
