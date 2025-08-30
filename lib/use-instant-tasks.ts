@@ -25,6 +25,7 @@ interface UseInstantTasksReturn {
   deleteTask: (taskId: string) => Promise<void>
   refreshTasks: () => Promise<void>
   clearCache: () => void
+  cleanupTempTasks: () => void
 }
 
 /**
@@ -253,6 +254,23 @@ export function useInstantTasks(userId?: string): UseInstantTasksReturn {
       console.log('Cache cleared')
     }
   }, [])
+  
+  /**
+   * Clean up any stale temporary tasks (tasks with temp_ IDs)
+   * This can happen if there was an error during task creation
+   */
+  const cleanupTempTasks = useCallback((): void => {
+    if (cacheRef.current) {
+      const currentTasks = cacheRef.current.getCachedTasks()
+      const tempTasks = currentTasks.filter(task => task.id.startsWith('temp_'))
+      
+      if (tempTasks.length > 0) {
+        console.log('Found stale temporary tasks, cleaning up:', tempTasks.length)
+        const cleanTasks = currentTasks.filter(task => !task.id.startsWith('temp_'))
+        cacheRef.current.setCachedTasks(cleanTasks)
+      }
+    }
+  }, [])
 
   return {
     tasks,
@@ -262,6 +280,7 @@ export function useInstantTasks(userId?: string): UseInstantTasksReturn {
     updateTask,
     deleteTask,
     refreshTasks,
-    clearCache
+    clearCache,
+    cleanupTempTasks
   }
 }

@@ -105,7 +105,8 @@ export default function TasksPage() {
     updateTask, 
     deleteTask, 
     refreshTasks,
-    clearCache
+    clearCache,
+    cleanupTempTasks
   } = useInstantTasks(user?.id)
 
   // State for AI task notifications
@@ -123,6 +124,21 @@ export default function TasksPage() {
       setTimeout(() => setAiTaskNotification(null), 300)
     }, 4000)
   })
+  
+  // Clean up any stale temporary tasks on mount and periodically
+  useEffect(() => {
+    if (user?.id) {
+      // Clean up immediately
+      cleanupTempTasks()
+      
+      // Set up periodic cleanup every 30 seconds
+      const cleanupInterval = setInterval(() => {
+        cleanupTempTasks()
+      }, 30000)
+      
+      return () => clearInterval(cleanupInterval)
+    }
+  }, [user?.id, cleanupTempTasks])
 
   // Debug logging for troubleshooting instant loading
   useEffect(() => {
