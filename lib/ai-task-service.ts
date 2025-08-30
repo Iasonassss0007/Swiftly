@@ -14,6 +14,7 @@
 
 import { getTaskCache, Task } from './task-cache'
 import { parseDateFromAIResponse, getCurrentContext, type AIRealTimeContext } from './ai-context-provider'
+import { createAITaskAPI, executeAITaskOperation, parseTaskCommand, type TaskOperation, type AITaskOperationResult } from './ai-task-api'
 
 /**
  * Extracted task data from AI response
@@ -532,4 +533,231 @@ export async function processAIForTasks(
 ): Promise<TaskCreationResult> {
   const service = createAITaskService(userId)
   return await service.processAIResponse(userMessage, aiResponse, realTimeContext)
+}
+
+/**
+ * Enhanced AI Task Processing with Full CRUD Operations
+ * This function gives AI complete access to all task operations
+ */
+export async function processAITaskCommand(
+  userId: string,
+  userMessage: string,
+  aiResponse: string,
+  realTimeContext?: AIRealTimeContext
+): Promise<TaskCreationResult> {
+  try {
+    console.log('Processing AI task command with full CRUD access...')
+    
+    // First try to parse as a direct command
+    const parsedCommand = parseTaskCommand(userMessage)
+    if (parsedCommand) {
+      console.log('Direct command detected:', parsedCommand)
+      const result = await executeAITaskOperation(userId, parsedCommand.operation, parsedCommand.parameters)
+      return convertToTaskCreationResult(result)
+    }
+    
+    // Check if AI response contains task operations
+    const aiCommand = parseTaskCommand(aiResponse)
+    if (aiCommand) {
+      console.log('AI response contains task operation:', aiCommand)
+      const result = await executeAITaskOperation(userId, aiCommand.operation, aiCommand.parameters)
+      return convertToTaskCreationResult(result)
+    }
+    
+    // Check for advanced task management commands in both user message and AI response
+    const combinedText = `${userMessage} ${aiResponse}`.toLowerCase()
+    
+    // List/Search operations
+    if (combinedText.includes('list') || combinedText.includes('show all') || combinedText.includes('get all')) {
+      const filter = extractFilterFromText(combinedText)
+      const result = await executeAITaskOperation(userId, 'list', { filter })
+      return convertToTaskCreationResult(result)
+    }
+    
+    // Search operations
+    if (combinedText.includes('search') || combinedText.includes('find')) {
+      const query = extractSearchQuery(userMessage, aiResponse)
+      const result = await executeAITaskOperation(userId, 'search', { query })
+      return convertToTaskCreationResult(result)
+    }
+    
+    // Complete operations
+    if (combinedText.includes('complete') || combinedText.includes('mark as done') || combinedText.includes('finish')) {
+      const taskId = extractTaskIdFromText(combinedText)
+      if (taskId) {
+        const result = await executeAITaskOperation(userId, 'complete', { taskId })
+        return convertToTaskCreationResult(result)
+      }
+    }
+    
+    // Update operations
+    if (combinedText.includes('update') || combinedText.includes('edit') || combinedText.includes('change')) {
+      const taskId = extractTaskIdFromText(combinedText)
+      const updates = extractUpdatesFromText(combinedText)
+      if (taskId && Object.keys(updates).length > 0) {
+        const result = await executeAITaskOperation(userId, 'update', { taskId, updates })
+        return convertToTaskCreationResult(result)
+      }
+    }
+    
+    // Delete operations
+    if (combinedText.includes('delete') || combinedText.includes('remove') || combinedText.includes('cancel')) {
+      const taskId = extractTaskIdFromText(combinedText)
+      if (taskId) {
+        const result = await executeAITaskOperation(userId, 'delete', { taskId })
+        return convertToTaskCreationResult(result)
+      }
+    }
+    
+    // Priority operations
+    if (combinedText.includes('priority') || combinedText.includes('urgent') || combinedText.includes('important')) {
+      const taskId = extractTaskIdFromText(combinedText)
+      const priority = extractPriorityFromText(combinedText)
+      if (taskId && priority) {
+        const result = await executeAITaskOperation(userId, 'prioritize', { taskId, priority })
+        return convertToTaskCreationResult(result)
+      }
+    }
+    
+    // Reschedule operations
+    if (combinedText.includes('reschedule') || combinedText.includes('move to') || combinedText.includes('change due date')) {
+      const taskId = extractTaskIdFromText(combinedText)
+      const dueDate = extractDueDateFromText(combinedText, realTimeContext)
+      if (taskId) {
+        const result = await executeAITaskOperation(userId, 'reschedule', { taskId, dueDate })
+        return convertToTaskCreationResult(result)
+      }
+    }
+    
+    // If no specific operation detected, fall back to original task creation logic
+    console.log('No specific operation detected, falling back to task creation logic')
+    return await processAIForTasks(userId, userMessage, aiResponse, realTimeContext)
+    
+  } catch (error) {
+    console.error('Error processing AI task command:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      detected: false
+    }
+  }
+}
+
+/**
+ * Convert AITaskOperationResult to TaskCreationResult
+ */
+function convertToTaskCreationResult(result: AITaskOperationResult): TaskCreationResult {
+  return {
+    success: result.success,
+    task: result.task,
+    error: result.error,
+    detected: true,
+    rawExtraction: result.task ? {
+      title: result.task.title,
+      description: result.task.description || undefined,
+      dueDate: result.task.due_date ? new Date(result.task.due_date) : undefined,
+      priority: result.task.priority,
+      status: result.task.status,
+      tags: result.task.tags || undefined
+    } : undefined
+  }
+}
+
+/**
+ * Helper functions for advanced command parsing
+ */
+function extractFilterFromText(text: string): Record<string, any> {
+  const filter: Record<string, any> = {}
+  
+  if (text.includes('completed') || text.includes('done')) filter.completed = true
+  if (text.includes('pending') || text.includes('todo')) filter.completed = false
+  if (text.includes('high priority')) filter.priority = 'high'
+  if (text.includes('medium priority')) filter.priority = 'medium'
+  if (text.includes('low priority')) filter.priority = 'low'
+  if (text.includes('in progress')) filter.status = 'in_progress'
+  
+  return filter
+}
+
+function extractSearchQuery(userMessage: string, aiResponse: string): string {
+  // Extract search terms from user message
+  const searchPatterns = [
+    /search\s+for\s+(.+)/i,
+    /find\s+(.+)/i,
+    /look\s+for\s+(.+)/i,
+    /"([^"]+)"/g
+  ]
+  
+  for (const pattern of searchPatterns) {
+    const match = userMessage.match(pattern)
+    if (match) {
+      return match[1].trim()
+    }
+  }
+  
+  // Fallback: use key terms from the message
+  const words = userMessage.split(' ').filter(word => 
+    word.length > 3 && 
+    !['search', 'find', 'look', 'task', 'tasks'].includes(word.toLowerCase())
+  )
+  
+  return words.slice(0, 3).join(' ')
+}
+
+function extractTaskIdFromText(text: string): string | null {
+  // Look for various task ID patterns
+  const patterns = [
+    /task\s+id\s*:?\s*([a-zA-Z0-9-_]+)/i,
+    /id\s*:?\s*([a-zA-Z0-9-_]+)/i,
+    /task\s+([a-zA-Z0-9-_]+)/i,
+    /#([a-zA-Z0-9-_]+)/i
+  ]
+  
+  for (const pattern of patterns) {
+    const match = text.match(pattern)
+    if (match) {
+      return match[1]
+    }
+  }
+  
+  return null
+}
+
+function extractUpdatesFromText(text: string): Record<string, any> {
+  const updates: Record<string, any> = {}
+  
+  // Title updates
+  const titleMatch = text.match(/(?:title|name)\s+to\s+["']([^"']+)["']/i)
+  if (titleMatch) updates.title = titleMatch[1]
+  
+  // Description updates
+  const descMatch = text.match(/description\s+to\s+["']([^"']+)["']/i)
+  if (descMatch) updates.description = descMatch[1]
+  
+  // Status updates
+  if (text.includes('mark as todo')) updates.status = 'todo'
+  if (text.includes('mark as in progress')) updates.status = 'in_progress'
+  if (text.includes('mark as done')) updates.status = 'done'
+  
+  // Priority updates
+  if (text.includes('high priority')) updates.priority = 'high'
+  if (text.includes('medium priority')) updates.priority = 'medium'
+  if (text.includes('low priority')) updates.priority = 'low'
+  
+  return updates
+}
+
+function extractPriorityFromText(text: string): 'low' | 'medium' | 'high' | null {
+  if (text.includes('high priority') || text.includes('urgent') || text.includes('important')) return 'high'
+  if (text.includes('low priority') || text.includes('minor')) return 'low'
+  if (text.includes('medium priority') || text.includes('normal')) return 'medium'
+  return null
+}
+
+function extractDueDateFromText(text: string, realTimeContext?: AIRealTimeContext): Date | null {
+  // Use existing date parsing logic
+  if (realTimeContext) {
+    return parseDateFromAIResponse(text, realTimeContext)
+  }
+  return null
 }

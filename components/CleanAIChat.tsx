@@ -2,7 +2,7 @@
 
 import { useState, FormEvent, useRef, useEffect, useCallback, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { processAIForTasks, TaskCreationResult } from '@/lib/ai-task-service'
+import { processAIForTasks, processAITaskCommand, TaskCreationResult } from '@/lib/ai-task-service'
 import { emitTaskCreated } from '@/lib/use-ai-task-integration'
 import { createEnhancedContext, createTaskPrompt, logContextInfo, type EnhancedUserContext } from '@/lib/ai-context-provider'
 
@@ -231,11 +231,11 @@ export default function CleanAIChat({ className = '', userContext, sessionId }: 
         setCurrentSessionId(data.session_id)
       }
 
-      // Process AI response for task creation with enhanced context
+      // Process AI response for comprehensive task operations with enhanced context
       if (userContext?.user_id && enhancedContext) {
         try {
-          console.log('Processing AI response for task creation with real-time context...')
-          const taskResult = await processAIForTasks(
+          console.log('Processing AI response for comprehensive task operations with real-time context...')
+          const taskResult = await processAITaskCommand(
             userContext.user_id,
             userQuestion,
             data.response,
