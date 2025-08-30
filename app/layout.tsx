@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Libre_Franklin } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/lib/auth-context'
+import { CacheProvider } from '@/lib/cache-provider'
 
 const libreFranklin = Libre_Franklin({ 
   subsets: ['latin'],
@@ -22,9 +23,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={libreFranklin.className}>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <CacheProvider>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </CacheProvider>
       </body>
     </html>
   )

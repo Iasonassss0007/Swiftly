@@ -5,6 +5,9 @@ import { User, Session } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
 import { supabase } from './supabase'
 import { Database } from './supabase'
+import { generateAccessToken, generateRefreshToken, getRefreshTokenExpiry } from './jwt-utils'
+import { generateTokenId } from './jwt-utils'
+import { clearAllCaches } from './task-cache'
 
 type Profile = Database['api']['Tables']['profiles']['Row']
 
@@ -14,11 +17,15 @@ interface AuthContextType {
   session: Session | null
   loading: boolean
   authLoading: boolean
+  accessToken: string | null
+  refreshToken: string | null
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>
   signIn: (email: string, password: string) => Promise<{ error: any }>
-  signOut: () => Promise<void>
+  signOut: (redirectPath?: string) => Promise<void>
   resetPassword: (email: string) => Promise<{ error: any }>
   createProfile: (userId: string, fullName: string, email: string) => Promise<{ error: any }>
+  refreshAccessToken: () => Promise<boolean>
+  restoreSession: () => Promise<boolean>
 }
 
 // Utility function to format date consistently across components
@@ -42,8 +49,8 @@ export const formatDate = (dateString: string | null | undefined): string => {
 // Utility function to create user data object from auth context
 export const createUserData = (user: User, profile: Profile | null) => ({
   id: user.id,
-  name: profile?.full_name ?? 'User',
-  email: profile?.email ?? 'user@example.com',
+  name: profile?.full_name ?? user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? 'User',
+  email: profile?.email ?? user.email ?? 'user@example.com',
   avatarUrl: profile?.avatar_url || undefined,
   roles: ['user'],
   memberSince: formatDate(profile?.created_at)
@@ -65,6 +72,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
   const listenerSetupRef = useRef(false)
   const initialSessionRef = useRef(false)
+  const tokenRefreshIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const [accessToken, setAccessToken] = useState<string | null>(null)
+  const [refreshToken, setRefreshToken] = useState<string | null>(null)
 
   // Fetch user profile from profiles table - memoized to prevent recreation
   const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
@@ -120,30 +130,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: null }
       }
       
-      const { data, error } = await supabase
-        .from('profiles')
-        .insert({
-          id: userId,
-          full_name: fullName,
-          email: email,
-          avatar_url: null
-        })
-        .select()
-        .single() as { data: Profile | null, error: any }
+      // TODO: Re-enable database operations after running migration
+      console.log(`Would create profile for user ${userId} with name ${fullName} and email ${email}`)
+      
+      // const { data, error } = await supabase
+      //   .from('profiles')
+      //   .insert({
+      //     id: userId,
+      //     full_name: fullName,
+      //     email: email,
+      //     avatar_url: null
+      //   })
+      //   .select()
+      //   .single() as { data: Profile | null, error: any }
 
-      if (error) {
-        console.error('Profile creation error:', error)
-        console.error('Error details:', {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint
-        })
-        return { error }
-      }
+      // if (error) {
+      //   console.error('Profile creation error:', error)
+      //   console.error('Error details:', {
+      //     code: error.code,
+      //     message: error.message,
+      //     details: error.details,
+      //     hint: error.hint
+      //   })
+      //   return { error }
+      // }
 
       // Update the profile state immediately
-      setProfile(data)
+      // setProfile(data)
       // console.log('Profile created successfully:', data)
       return { error: null }
     } catch (error) {
@@ -180,6 +193,232 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // console.log('ensureProfile returning:', profileData)
     return profileData
   }, [fetchProfile, createProfile])
+
+  // Generate and store JWT tokens
+  const generateAndStoreTokens = useCallback(async (userId: string, fullName: string, email: string) => {
+    try {
+      // Generate access token (short-lived)
+      const accessToken = await generateAccessToken({ userId, email, fullName })
+      
+      // Generate refresh token (long-lived)
+      const tokenId = generateTokenId()
+      const refreshToken = await generateRefreshToken(userId, tokenId)
+      
+      // TODO: Re-enable database operations after running migration
+      // Store refresh token in database
+      console.log(`Would store refresh token ${tokenId} for user ${userId} in database`)
+      
+      // const { error: tokenError } = await supabase
+      //   .from('refresh_tokens')
+      //   .insert({
+      //     id: tokenId,
+      //     user_id: userId,
+      //     expires_at: getRefreshTokenExpiry().toISOString(),
+      //     created_at: new Date().toISOString(),
+      //     is_revoked: false,
+      //     ip_address: typeof window !== 'undefined' ? 'client' : 'server',
+      //     user_agent: typeof window !== 'undefined' ? navigator.userAgent : 'server',
+      //     session_type: 'login'
+      //   })
+
+      // if (tokenError) {
+      //   console.error('Error storing refresh token:', tokenError)
+      //   return false
+      // }
+
+      // Store tokens in state and localStorage
+      setAccessToken(accessToken)
+      setRefreshToken(refreshToken)
+      
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('swiftly_refresh_token', refreshToken)
+        localStorage.setItem('swiftly_user_id', userId)
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error generating tokens:', error)
+      return false
+    }
+  }, [])
+
+  // Refresh access token using refresh token
+  const refreshAccessToken = useCallback(async (): Promise<boolean> => {
+    try {
+      if (!refreshToken) {
+        console.log('No refresh token available')
+        return false
+      }
+
+      const response = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refreshToken }),
+      })
+
+      if (!response.ok) {
+        console.error('Failed to refresh token:', response.statusText)
+        // Clear invalid tokens
+        setAccessToken(null)
+        setRefreshToken(null)
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('swiftly_refresh_token')
+          localStorage.removeItem('swiftly_user_id')
+        }
+        return false
+      }
+
+      const data = await response.json()
+      
+      // Update tokens
+      setAccessToken(data.accessToken)
+      if (data.refreshToken !== refreshToken) {
+        setRefreshToken(data.refreshToken)
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('swiftly_refresh_token', data.refreshToken)
+        }
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error refreshing token:', error)
+      return false
+    }
+  }, [refreshToken])
+
+  // Restore session from stored refresh token
+  const restoreSession = useCallback(async (): Promise<boolean> => {
+    try {
+      if (typeof window === 'undefined') return false
+
+      const storedRefreshToken = localStorage.getItem('swiftly_refresh_token')
+      const storedUserId = localStorage.getItem('swiftly_user_id')
+
+      if (!storedRefreshToken || !storedUserId) {
+        return false
+      }
+
+      const response = await fetch('/api/auth/restore-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refreshToken: storedRefreshToken }),
+      })
+
+      if (!response.ok) {
+        // Clear invalid stored tokens
+        localStorage.removeItem('swiftly_refresh_token')
+        localStorage.removeItem('swiftly_user_id')
+        return false
+      }
+
+      const data = await response.json()
+      
+      // Update tokens and user data
+      setAccessToken(data.accessToken)
+      setRefreshToken(data.refreshToken)
+      setUser({ id: data.user.id, email: data.user.email } as User)
+      setProfile({
+        id: data.user.id,
+        full_name: data.user.fullName,
+        email: data.user.email,
+        avatar_url: null,
+        created_at: data.user.memberSince,
+        updated_at: new Date().toISOString()
+      } as Profile)
+
+      // Store new tokens
+      localStorage.setItem('swiftly_refresh_token', data.refreshToken)
+      localStorage.setItem('swiftly_user_id', data.user.id)
+
+      return true
+    } catch (error) {
+      console.error('Error restoring session:', error)
+      return false
+    }
+  }, [])
+
+  // Set up automatic token refresh
+  const setupTokenRefresh = useCallback(() => {
+    if (tokenRefreshIntervalRef.current) {
+      clearInterval(tokenRefreshIntervalRef.current)
+    }
+
+    // Refresh token every 10 minutes (before the 15-minute expiry)
+    tokenRefreshIntervalRef.current = setInterval(async () => {
+      if (refreshToken) {
+        const success = await refreshAccessToken()
+        if (!success) {
+          // Token refresh failed, sign out user
+          await signOut()
+        }
+      }
+    }, 10 * 60 * 1000) // 10 minutes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshToken, refreshAccessToken])
+
+  // Clean up token refresh interval
+  const cleanupTokenRefresh = useCallback(() => {
+    if (tokenRefreshIntervalRef.current) {
+      clearInterval(tokenRefreshIntervalRef.current)
+      tokenRefreshIntervalRef.current = null
+    }
+  }, [])
+
+  // Sign out function with proper cleanup
+  const signOut = useCallback(async (redirectPath?: string): Promise<void> => {
+    try {
+      console.log('Starting sign out process...')
+      
+      // Revoke refresh token if available
+      if (refreshToken) {
+        try {
+          await fetch('/api/auth/logout', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ refreshToken }),
+          })
+        } catch (error) {
+          console.error('Error revoking refresh token:', error)
+        }
+      }
+
+      // Clear tokens and user data
+      setAccessToken(null)
+      setRefreshToken(null)
+      setUser(null)
+      setProfile(null)
+      setSession(null)
+
+      // Clean up token refresh interval
+      cleanupTokenRefresh()
+
+      // Clear stored tokens and task cache
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('swiftly_refresh_token')
+        localStorage.removeItem('swiftly_user_id')
+        
+        // Clear all task caches for security and clean state
+        clearAllCaches()
+        console.log('Cleared all task caches on logout')
+      }
+
+      // Sign out from Supabase
+      await supabase.auth.signOut()
+      
+      // Redirect to specified path or default to homepage
+      router.push(redirectPath || '/')
+    } catch (error) {
+      console.error('Error during sign out:', error)
+      // Force redirect even if there's an error
+      router.push(redirectPath || '/')
+    }
+  }, [refreshToken, cleanupTokenRefresh, router])
 
   // Wait for session to be established before redirecting
   const waitForSession = useCallback(async (): Promise<Session | null> => {
@@ -392,19 +631,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // Sign out function
-  const signOut = async (): Promise<void> => {
-    try {
-      await supabase.auth.signOut()
-      setUser(null)
-      setProfile(null)
-      setSession(null)
-      router.push('/auth')
-    } catch (error) {
-      console.error('Sign out error:', error)
-    }
-  }
-
   // Get initial session and profile - only called once on mount
   const getInitialSession = useCallback(async () => {
     // Prevent duplicate calls using global flag
@@ -517,21 +743,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           globalSignInProcessed = true
           console.log('Processing SIGNED_IN event...')
           
+          // TODO: Re-enable database operations after running migration
           // Log session activity to user_sessions table
-          try {
-            await supabase.from('user_sessions').insert({
-              user_id: session.user.id,
-              session_data: {
-                event: 'SIGNED_IN',
-                device: 'web',
-                user_agent: navigator.userAgent
-              }
-            })
-            console.log('Session SIGNED_IN logged to user_sessions table')
-          } catch (error) {
-            console.error('Failed to log session activity to user_sessions table:', error)
-            // Continue execution even if logging fails
-          }
+          console.log(`Would log SIGNED_IN event for user ${session.user.id}`)
+          
+          // try {
+          //   await supabase.from('user_sessions').insert({
+          //     user_id: session.user.id,
+          //     session_data: {
+          //       event: 'SIGNED_IN',
+          //       device: 'web',
+          //       user_agent: navigator.userAgent
+          //     }
+          //   })
+          //   console.log('Session SIGNED_IN logged to user_sessions table')
+          // } catch (error) {
+          //   console.error('Failed to log session activity to user_sessions table:', error)
+          //   // Continue execution even if logging fails
+          // }
           
           // Set session state
           setSession(session)
@@ -576,20 +805,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         // Handle SIGNED_OUT event
         if (event === 'SIGNED_OUT' && session?.user) {
+          // TODO: Re-enable database operations after running migration
           // Log session activity to user_sessions table
-          try {
-            await supabase.from('user_sessions').insert({
-              user_id: session.user.id,
-              session_data: {
-                event: 'SIGNED_OUT',
-                device: 'web'
-              }
-            })
-            console.log('Session SIGNED_OUT logged to user_sessions table')
-          } catch (error) {
-            console.error('Failed to log session activity to user_sessions table:', error)
-            // Continue execution even if logging fails
-          }
+          console.log(`Would log SIGNED_OUT event for user ${session.user.id}`)
+          
+          // try {
+          //   await supabase.from('user_sessions').insert({
+          //     user_id: session.user.id,
+          //     session_data: {
+          //       event: 'SIGNED_OUT',
+          //       device: 'web'
+          //     }
+          //   })
+          //   console.log('Session SIGNED_OUT logged to user_sessions table')
+          // } catch (error) {
+          //   console.error('Failed to log session activity to user_sessions table:', error)
+          //   // Continue execution even if logging fails
+          // }
           
           // Clear state
           setSession(null)
@@ -618,9 +850,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       subscription.unsubscribe()
       listenerSetupRef.current = false
+      cleanupTokenRefresh()
       // Don't reset global flag on cleanup to handle Fast Refresh
     }
-  }, [ensureProfile, router, user?.id]) // Add missing dependencies for proper hook behavior
+  }, [ensureProfile, router, user?.id, cleanupTokenRefresh]) // Add missing dependencies for proper hook behavior
 
   // Get initial session only once on mount
   useEffect(() => {
@@ -629,17 +862,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [getInitialSession]) // Add getInitialSession dependency for proper hook behavior
 
-  const value = {
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      cleanupTokenRefresh()
+    }
+  }, [cleanupTokenRefresh])
+
+  const value: AuthContextType = {
     user,
     profile,
     session,
     loading,
     authLoading,
+    accessToken,
+    refreshToken,
     signUp,
     signIn,
     signOut,
     resetPassword,
-    createProfile
+    createProfile,
+    refreshAccessToken,
+    restoreSession
   }
 
   return (

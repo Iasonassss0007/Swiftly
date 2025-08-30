@@ -11,7 +11,7 @@ import { motion } from 'framer-motion'
 const plans = [
   {
     name: 'Starter Plan',
-    price: '$5',
+    price: '$11.99',
     period: '/month',
     description: 'Access to fundamental task management features.',
     features: [
@@ -25,7 +25,7 @@ const plans = [
   },
   {
     name: 'Pro Plan',
-    price: '$15',
+    price: '$29.99',
     period: '/month',
     description: 'Unlimited tasks and project management capabilities.',
     features: [
@@ -108,7 +108,7 @@ export default function BillingPage() {
 
   return (
     <Layout user={userData}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 overflow-x-hidden">
         {/* Header Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -120,36 +120,25 @@ export default function BillingPage() {
             Billing & Plans
           </h1>
           <p className="text-xl text-[#4F5F73] max-w-3xl mx-auto">
-            Choose the plan that fits your workflow. All plans include a 14-day free trial.
+            Choose the plan that fits your workflow.
           </p>
         </motion.div>
 
-
-
-        {/* Available Plans Section */}
+        {/* Pricing Plans Section */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7 }}
           className="mb-12"
         >
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-[#0F1626] mb-4">
-              Available Plans
-            </h2>
-            <p className="text-lg text-[#4F5F73]">
-              All plans include a 14-day free trial • No credit card required
-            </p>
-          </div>
-
-          <div className="grid lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          <div className="grid lg:grid-cols-3 gap-6 lg:gap-8 max-w-full mx-auto mt-6">
             {plans.map((plan, index) => (
               <motion.div
                 key={index}
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
-                className={`relative bg-white border-2 rounded-xl p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl flex flex-col h-full ${
+                className={`relative bg-white border-2 rounded-xl p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl flex flex-col h-full mt-6 ${
                   plan.popular 
                     ? 'border-[#111C59] ring-2 ring-[#111C59] shadow-xl' 
                     : 'border-[#ADB3BD]'
@@ -157,7 +146,7 @@ export default function BillingPage() {
               >
                 {plan.popular && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <span className="bg-[#4F5F73] text-white px-4 py-2 rounded-full text-sm font-semibold">
+                    <span className="text-white px-4 py-2 rounded-full text-sm font-semibold" style={{backgroundColor: 'rgb(17 28 89 / var(--tw-bg-opacity, 1))'}}>
                       Most Popular
                     </span>
                   </div>
@@ -207,34 +196,6 @@ export default function BillingPage() {
           </div>
         </motion.div>
 
-        {/* Additional Information */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="text-center"
-        >
-          <div className="bg-gradient-to-r from-[#111C59] to-[#4F5F73] rounded-xl p-8 text-white">
-            <h3 className="text-2xl font-bold mb-4">
-              Need Help with Billing?
-            </h3>
-            <p className="text-lg mb-6 opacity-90">
-              Our support team is here to help with any billing questions or plan changes.
-            </p>
-            <div className="space-y-4">
-              <div className="bg-white/10 rounded-lg p-4 inline-block">
-                <p className="text-sm opacity-90">
-                  📧 Email: support@swiftly.com
-                </p>
-              </div>
-              <div className="bg-white/10 rounded-lg p-4 inline-block">
-                <p className="text-sm opacity-90">
-                  💬 Live Chat: Available 24/7
-                </p>
-              </div>
-            </div>
-          </div>
-        </motion.div>
       </div>
     </Layout>
   )

@@ -3,10 +3,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
+import { useAuth } from '@/lib/auth-context'
 
 export default function Home() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const mobileMenuRef = useRef<HTMLDivElement>(null)
+  const { user, loading } = useAuth()
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -82,11 +84,27 @@ export default function Home() {
               <Link href="#about" className="text-[#0F1626] hover:text-[#111C59] transition-colors duration-300 relative font-medium">About</Link>
             </nav>
 
-                         {/* CTA Buttons */}
-             <div className="hidden sm:flex items-center space-x-4">
-                             <Link href="/auth" className="border-2 border-[#111C59] text-[#111C59] px-6 py-3 rounded-lg font-semibold transition-all duration-300 hover:bg-[#111C59] hover:text-white">Log In</Link>
-              <Link href="/auth" className="bg-[#111C59] text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300 hover:bg-[#0F1626] hover:scale-105 shadow-lg">Sign Up</Link>
-             </div>
+            {/* CTA Buttons */}
+            <div className="hidden sm:flex items-center space-x-4">
+              {loading ? (
+                // Loading state - show skeleton buttons
+                <>
+                  <div className="w-20 h-12 bg-gray-200 animate-pulse rounded-lg"></div>
+                  <div className="w-24 h-12 bg-gray-200 animate-pulse rounded-lg"></div>
+                </>
+              ) : user ? (
+                // User is logged in - show Dashboard button only
+                <Link href="/dashboard" className="bg-[#111C59] text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300 hover:bg-[#0F1626] hover:scale-105 shadow-lg">
+                  Dashboard
+                </Link>
+              ) : (
+                // User is not logged in - show Log In and Sign Up buttons
+                <>
+                  <Link href="/auth" className="border-2 border-[#111C59] text-[#111C59] px-6 py-3 rounded-lg font-semibold transition-all duration-300 hover:bg-[#111C59] hover:text-white">Log In</Link>
+                  <Link href="/auth" className="bg-[#111C59] text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300 hover:bg-[#0F1626] hover:scale-105 shadow-lg">Sign Up</Link>
+                </>
+              )}
+            </div>
 
             {/* Mobile Menu Button */}
             <button
@@ -194,32 +212,58 @@ export default function Home() {
 
                 {/* Mobile CTA Buttons */}
                 <div className="mt-12 space-y-4 px-8">
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, delay: 0.5 }}
-                  >
-                                                               <Link
-                        href="/auth"
-                        onClick={closeMobileMenu}
-                        className="block w-full text-center border-2 border-[#111C59] text-[#111C59] px-8 py-4 rounded-lg font-semibold transition-all duration-300 hover:bg-[#111C59] hover:text-white text-lg"
-                      >
-                        Log In
-                      </Link>
-                    </motion.div>
+                  {loading ? (
+                    // Loading state - show skeleton buttons
+                    <>
+                      <div className="w-full h-16 bg-gray-200 animate-pulse rounded-lg"></div>
+                      <div className="w-full h-16 bg-gray-200 animate-pulse rounded-lg"></div>
+                    </>
+                  ) : user ? (
+                    // User is logged in - show Dashboard button only
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.4, delay: 0.6 }}
+                      transition={{ duration: 0.4, delay: 0.5 }}
                     >
                       <Link
-                        href="/auth"
+                        href="/dashboard"
                         onClick={closeMobileMenu}
                         className="block w-full text-center bg-[#111C59] text-white px-8 py-4 rounded-lg font-semibold transition-all duration-300 hover:bg-[#0F1626] text-lg"
                       >
-                        Sign Up
+                        Dashboard
                       </Link>
-                  </motion.div>
+                    </motion.div>
+                  ) : (
+                    // User is not logged in - show Log In and Sign Up buttons
+                    <>
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.5 }}
+                      >
+                        <Link
+                          href="/auth"
+                          onClick={closeMobileMenu}
+                          className="block w-full text-center border-2 border-[#111C59] text-[#111C59] px-8 py-4 rounded-lg font-semibold transition-all duration-300 hover:bg-[#111C59] hover:text-white text-lg"
+                        >
+                          Log In
+                        </Link>
+                      </motion.div>
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.6 }}
+                      >
+                        <Link
+                          href="/auth"
+                          onClick={closeMobileMenu}
+                          className="block w-full text-center bg-[#111C59] text-white px-8 py-4 rounded-lg font-semibold transition-all duration-300 hover:bg-[#0F1626] text-lg"
+                        >
+                          Sign Up
+                        </Link>
+                      </motion.div>
+                    </>
+                  )}
                 </div>
               </nav>
             </motion.div>
@@ -287,12 +331,12 @@ export default function Home() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
-              className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+              className="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-md mx-auto sm:max-w-none"
             >
-              <Link href="/dashboard" className="bg-[#111C59] text-white px-8 py-4 rounded-lg font-semibold transition-all duration-300 hover:bg-[#0F1626] hover:scale-105 shadow-lg text-lg">
+              <Link href="/dashboard" className="w-full sm:w-auto bg-white text-[#0F1626] px-8 py-4 rounded-lg font-semibold transition-all duration-300 hover:bg-[#F8FAFC] hover:scale-105 shadow-lg text-lg text-center">
                 Get Started Free
               </Link>
-              <Link href="#features" className="border-2 border-white text-white px-8 py-4 rounded-lg font-semibold hover:bg-white hover:text-[#0F1626] transition-all duration-300 text-lg">
+              <Link href="#features" className="w-full sm:w-auto border-2 border-white text-white px-8 py-4 rounded-lg font-semibold hover:bg-white hover:text-[#0F1626] transition-all duration-300 text-lg text-center">
                 Learn More
               </Link>
             </motion.div>
@@ -319,7 +363,7 @@ export default function Home() {
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
             {[
               {
                 icon: (
@@ -382,15 +426,15 @@ export default function Home() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className="bg-white border-2 border-[#ADB3BD] rounded-xl p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:border-[#111C59] text-center"
+                className="bg-white border border-[#ADB3BD]/30 rounded-xl p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:border-[#111C59]/50 text-center flex flex-col h-full"
               >
                 <div className="mb-6 flex justify-center">
                   {feature.icon}
                 </div>
-                <h3 className="text-xl font-semibold text-[#0F1626] mb-4">
+                <h3 className="text-xl font-semibold text-[#0F1626] mb-4 leading-tight">
                   {feature.title}
                 </h3>
-                <p className="text-[#4F5F73]">
+                <p className="text-[#4F5F73] flex-grow leading-relaxed">
                   {feature.description}
                 </p>
               </motion.div>
@@ -418,11 +462,11 @@ export default function Home() {
             </p>
           </motion.div>
 
-          <div className="grid lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          <div className="grid lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {[
               {
                 name: 'Starter Plan',
-                price: '$5',
+                price: '$11.99',
                 period: '/month',
                 description: 'Access to fundamental task management features.',
                 features: [
@@ -436,7 +480,7 @@ export default function Home() {
               },
               {
                 name: 'Pro Plan',
-                price: '$15',
+                price: '$29.99',
                 period: '/month',
                 description: 'Unlimited tasks and project management capabilities.',
                 features: [
@@ -471,8 +515,10 @@ export default function Home() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className={`relative bg-white border-2 border-[#ADB3BD] rounded-xl p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl flex flex-col h-full ${
-                  plan.popular ? 'ring-2 ring-[#111C59] shadow-xl border-[#111C59]' : ''
+                className={`relative bg-white border-2 rounded-xl p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl flex flex-col h-full ${
+                  plan.popular
+                    ? 'ring-2 ring-[#111C59] shadow-xl border-[#111C59]'
+                    : 'border-[#ADB3BD]/30 hover:border-[#111C59]/50'
                 }`}
               >
                 {plan.popular && (
@@ -484,7 +530,7 @@ export default function Home() {
                 )}
                 
                 <div className="text-center mb-8">
-                  <h3 className="text-2xl font-bold text-[#0F1626] mb-4">
+                  <h3 className="text-2xl font-bold text-[#0F1626] mb-4 leading-tight">
                     {plan.name}
                   </h3>
                   <div className="mb-4">
@@ -495,18 +541,18 @@ export default function Home() {
                       {plan.period}
                     </span>
                   </div>
-                  <p className="text-[#4F5F73]">
+                  <p className="text-[#4F5F73] leading-relaxed">
                     {plan.description}
                   </p>
                 </div>
                 
                 <ul className="space-y-3 mb-8 flex-grow">
                   {plan.features.map((feature, featureIndex) => (
-                    <li key={featureIndex} className="flex items-center text-[#0F1626]">
-                      <svg className="w-5 h-5 text-[#4F5F73] mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <li key={featureIndex} className="flex items-start text-[#0F1626]">
+                      <svg className="w-5 h-5 text-[#4F5F73] mr-3 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      {feature}
+                      <span className="leading-relaxed">{feature}</span>
                     </li>
                   ))}
                 </ul>
@@ -514,8 +560,8 @@ export default function Home() {
                 <div className="mt-auto">
                   <button className={`w-full py-3 px-6 rounded-lg font-semibold transition-all duration-300 ${
                     plan.popular
-                      ? 'bg-[#111C59] text-white hover:bg-[#0F1626]'
-                      : 'bg-[#4F5F73] text-white hover:bg-[#111C59]'
+                      ? 'bg-[#111C59] text-white hover:bg-[#0F1626] shadow-lg'
+                      : 'bg-[#4F5F73] text-white hover:bg-[#111C59] shadow-md'
                   }`}>
                     {plan.cta}
                   </button>
@@ -560,14 +606,14 @@ export default function Home() {
             <p className="text-xl text-white/90 mb-8 max-w-3xl mx-auto">
               Join thousands of professionals who have already streamlined their workflow with Swiftly.
             </p>
-                         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                              <Link href="/auth" className="bg-white text-[#0F1626] px-8 py-4 rounded-lg font-semibold hover:bg-[#F8FAFC] transition-all duration-300 text-lg">
-                  Start Your Free Trial
-                </Link>
-               <Link href="#features" className="border-2 border-white text-white px-8 py-4 rounded-lg font-semibold hover:bg-white hover:text-[#0F1626] transition-all duration-300 text-lg">
-                 See How It Works
-               </Link>
-             </div>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-md mx-auto sm:max-w-none">
+              <Link href="/auth" className="w-full sm:w-auto bg-white text-[#0F1626] px-8 py-4 rounded-lg font-semibold hover:bg-[#F8FAFC] transition-all duration-300 text-lg text-center shadow-lg">
+                Start Your Free Trial
+              </Link>
+              <Link href="#features" className="w-full sm:w-auto border-2 border-white text-white px-8 py-4 rounded-lg font-semibold hover:bg-white hover:text-[#0F1626] transition-all duration-300 text-lg text-center">
+                See How It Works
+              </Link>
+            </div>
           </motion.div>
         </div>
       </section>
@@ -604,7 +650,7 @@ export default function Home() {
           
           <div className="border-t border-[#4F5F73] mt-12 pt-8 text-center">
             <p className="text-[#ADB3BD]">
-              © 2024 Swiftly. All rights reserved.
+              © 2025 Swiftly. All rights reserved.
             </p>
           </div>
         </div>

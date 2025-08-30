@@ -5,15 +5,17 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import Sidebar from './Sidebar'
 import { LayoutProps } from '@/types'
+import { useAuth } from '@/lib/auth-context'
 
 export default function Layout({ children, user }: LayoutProps) {
   const router = useRouter()
+  const { signOut } = useAuth()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  // Handle logout - redirect to home
-  const handleLogout = () => {
-    router.push('/auth')
+  // Handle logout - use the auth context signOut function with auth redirect
+  const handleLogout = async () => {
+    await signOut('/auth')
   }
 
   // Handle sidebar collapse for desktop

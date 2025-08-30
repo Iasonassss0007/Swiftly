@@ -112,7 +112,7 @@ export default function Footer() {
         >
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <p className="text-light-gray text-sm">
-              © 2024 Swiftly. All rights reserved.
+              © 2025 Swiftly. All rights reserved.
             </p>
             <p className="text-light-gray text-sm">
               Built with ❤️ for better productivity

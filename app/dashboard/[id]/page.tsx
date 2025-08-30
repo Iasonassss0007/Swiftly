@@ -7,10 +7,18 @@ import HomeView from '@/components/HomeView'
 import { useAuth, createUserData } from '@/lib/auth-context'
 import { supabase } from '@/lib/supabase'
 
-export default function DashboardPage({ params }: { params: { id: string } }) {
+export default function DashboardPage({ params }: { params: Promise<{ id: string }> }) {
   const { user, profile, loading } = useAuth()
   const [sessionLoading, setSessionLoading] = useState(true)
+  const [id, setId] = useState<string>('')
   const router = useRouter()
+
+  // Extract params
+  useEffect(() => {
+    params.then((resolvedParams) => {
+      setId(resolvedParams.id)
+    })
+  }, [params])
 
   // Session guard - check for valid session on mount
   useEffect(() => {
@@ -39,7 +47,7 @@ export default function DashboardPage({ params }: { params: { id: string } }) {
   }, [user, loading, router])
 
   // Show loading state while checking session or auth context
-  if (loading || sessionLoading) {
+  if (loading || sessionLoading || !id) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
         <div className="text-center">

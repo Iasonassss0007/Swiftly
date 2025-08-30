@@ -1,0 +1,13 @@
+# Core dependencies for Google Gemini API
+google-generativeai>=0.3.0
+fastapi>=0.104.0
+uvicorn>=0.24.0
+pydantic>=2.5.0
+
+# Additional utilities
+python-multipart>=0.0.6
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# Development (optional)
+python-dotenv>=1.0.0

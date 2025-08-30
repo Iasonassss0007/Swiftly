@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
-import { supabase } from '@/lib/supabase'
+
 import type { Profile } from '@/lib/supabaseClient'
 import {
   Home,
@@ -38,47 +38,11 @@ export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }
   const pathname = usePathname()
   const [openAccordions, setOpenAccordions] = useState<Set<string>>(new Set())
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
-  const [userFullName, setUserFullName] = useState(user.name)
-  const [userEmail, setUserEmail] = useState(user.email)
-  const [isLoadingProfile, setIsLoadingProfile] = useState(false)
   const profileDropdownRef = useRef<HTMLDivElement>(null)
 
-  // Fetch user's real profile data from profiles table on component mount
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (!user.id) return
-      
-      setIsLoadingProfile(true)
-      try {
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('full_name, email')
-          .eq('id', user.id)
-          .single() as { data: Pick<Profile, 'full_name' | 'email'> | null, error: any }
-
-        if (error) {
-          console.error('Error fetching user profile in sidebar:', error)
-          // Keep the fallback data from props
-          return
-        }
-
-        if (profile?.full_name) {
-          setUserFullName(profile.full_name)
-        }
-        
-        if (profile?.email) {
-          setUserEmail(profile.email)
-        }
-      } catch (error) {
-        console.error('Unexpected error fetching user profile in sidebar:', error)
-      } finally {
-        setIsLoadingProfile(false)
-      }
-    }
-
-    // Always fetch to ensure we have the latest data
-    fetchUserProfile()
-  }, [user.id])
+  // Use immediate user data for instant loading
+  const userFullName = user.name || 'User'
+  const userEmail = user.email || ''
 
   const navigationItems = [
     {
@@ -91,11 +55,7 @@ export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }
       id: 'tasks',
       label: 'Tasks',
       href: '/dashboard/tasks',
-      icon: <ListChecks className="w-5 h-5" />,
-      subItems: [
-        { id: 'my-tasks', label: 'My Tasks', href: '/dashboard/tasks/my', icon: <ListChecks className="w-4 h-4" /> },
-        { id: 'team-tasks', label: 'Team Tasks', href: '/dashboard/tasks/team', icon: <ListChecks className="w-4 h-4" /> }
-      ]
+      icon: <ListChecks className="w-5 h-5" />
     },
     {
       id: 'calendar',
@@ -109,7 +69,7 @@ export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }
     },
     {
       id: 'ai',
-      label: 'AI Chat',
+      label: 'Swiftly AI',
       href: '/dashboard/ai',
       icon: <MessageSquare className="w-5 h-5" />
     },
@@ -296,7 +256,7 @@ export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }
               ) : (
                 <div className="w-8 h-8 bg-gradient-to-r from-[#111C59] to-[#4F5F73] rounded-full flex items-center justify-center shadow-lg">
                   <span className="text-white font-medium text-sm">
-                    {isLoadingProfile ? '...' : getUserInitials(userFullName)}
+                    {getUserInitials(userFullName)}
                   </span>
                 </div>
               )}
@@ -305,10 +265,10 @@ export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }
               <>
                 <div className="flex-1 text-left min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">
-                    {isLoadingProfile ? 'Loading...' : userFullName}
+                    {userFullName}
                   </p>
                   <p className="text-xs text-gray-500 truncate" title={userEmail}>
-                    {isLoadingProfile ? 'Loading...' : userEmail}
+                    {userEmail}
                   </p>
                 </div>
                 <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />

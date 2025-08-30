@@ -30,6 +30,59 @@ export type Database = {
           updated_at?: string
         }
       }
+      tasks: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          description: string | null
+          status: 'todo' | 'in_progress' | 'done'
+          priority: 'low' | 'medium' | 'high'
+          due_date: string | null
+          completed: boolean
+          tags: string[] | null
+          assignees: any[] | null
+          subtasks: any[] | null
+          attachments: any[] | null
+          comments: any[] | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          description?: string | null
+          status?: 'todo' | 'in_progress' | 'done'
+          priority?: 'low' | 'medium' | 'high'
+          due_date?: string | null
+          completed?: boolean
+          tags?: string[] | null
+          assignees?: any[] | null
+          subtasks?: any[] | null
+          attachments?: any[] | null
+          comments?: any[] | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          description?: string | null
+          status?: 'todo' | 'in_progress' | 'done'
+          priority?: 'low' | 'medium' | 'high'
+          due_date?: string | null
+          completed?: boolean
+          tags?: string[] | null
+          assignees?: any[] | null
+          subtasks?: any[] | null
+          attachments?: any[] | null
+          comments?: any[] | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       user_sessions: {
         Row: {
           id: string
