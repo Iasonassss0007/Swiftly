@@ -30,6 +30,7 @@ interface Message {
   type: 'user' | 'ai' | 'error' | 'task-created'
   timestamp: Date
   taskResult?: TaskCreationResult // For task creation messages
+  hasTask?: boolean // Indicates if this AI message created a task
 }
 
 export default function CleanAIChat({ className = '', userContext, sessionId }: CleanAIChatProps) {
@@ -212,9 +213,50 @@ export default function CleanAIChat({ className = '', userContext, sessionId }: 
           )
           
           if (taskResult.success && taskResult.task) {
-            // Add a special message about task creation
-            const taskMessage = `✅ Task created: "${taskResult.task.title}"`
-            addMessage(taskMessage, 'task-created')
+            // Generate a friendly, natural confirmation message to append to AI response
+            const friendlyConfirmations = [
+              `Got it! I created a task named '${taskResult.task.title}' for you.`,
+              `All set! '${taskResult.task.title}' is now on your tasks page.`,
+              `Done! I've added '${taskResult.task.title}' to your tasks.`,
+              `Perfect! Task '${taskResult.task.title}' has been created.`,
+              `✅ Created! '${taskResult.task.title}' is ready on your task list.`,
+              `Task created! You'll find '${taskResult.task.title}' in your tasks now.`
+            ]
+            
+            // Build the confirmation message with task details
+            let confirmationMessage = friendlyConfirmations[Math.floor(Math.random() * friendlyConfirmations.length)]
+            
+            // Add due date info if available
+            if (taskResult.task.dueDate) {
+              const dueDateStr = taskResult.task.dueDate.toLocaleDateString('en-US', { 
+                weekday: 'short', 
+                month: 'short', 
+                day: 'numeric' 
+              })
+              confirmationMessage += ` Due date is set for ${dueDateStr}.`
+            }
+            
+            // Add priority info if high priority
+            if (taskResult.task.priority === 'high') {
+              confirmationMessage += ` I've marked it as high priority.`
+            }
+            
+            // Replace the AI's response with our friendly confirmation
+            setMessages(prev => {
+              const updatedMessages = [...prev]
+              // Find and update the last AI message
+              for (let i = updatedMessages.length - 1; i >= 0; i--) {
+                if (updatedMessages[i].type === 'ai') {
+                  updatedMessages[i] = {
+                    ...updatedMessages[i],
+                    content: confirmationMessage,
+                    hasTask: true // Mark this message as having created a task
+                  }
+                  break
+                }
+              }
+              return updatedMessages
+            })
             
             // Emit event for cross-component updates
             emitTaskCreated(userContext.user_id, taskResult.task)
@@ -265,6 +307,7 @@ export default function CleanAIChat({ className = '', userContext, sessionId }: 
       const isUser = message.type === 'user'
       const isError = message.type === 'error'
       const isTaskCreated = message.type === 'task-created'
+      const isAIWithTask = message.type === 'ai' && message.hasTask
       const isLast = index === messages.length - 1
       
       return (
@@ -284,7 +327,9 @@ export default function CleanAIChat({ className = '', userContext, sessionId }: 
                   ? 'bg-red-50 border border-red-200 text-red-800 shadow-md'
                   : isTaskCreated
                     ? 'bg-green-50 border border-green-200 text-green-800 shadow-md'
-                    : 'bg-white text-gray-900 shadow-md border border-gray-100'
+                    : isAIWithTask
+                      ? 'bg-green-50 border border-green-200 text-gray-900 shadow-md'
+                      : 'bg-white text-gray-900 shadow-md border border-gray-100'
             }`}>
               {isTaskCreated ? (
                 // Special styling for task creation messages
@@ -296,6 +341,16 @@ export default function CleanAIChat({ className = '', userContext, sessionId }: 
                   </div>
                   <p className="text-sm leading-relaxed whitespace-pre-wrap font-medium">{message.content}</p>
                 </div>
+              ) : isAIWithTask ? (
+                // Special styling for AI messages that created tasks
+                <div className="flex items-start space-x-2">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                </div>
               ) : (
                 <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
               )}
@@ -305,7 +360,7 @@ export default function CleanAIChat({ className = '', userContext, sessionId }: 
                 {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </div>
             )}
-            {isTaskCreated && (
+            {(isTaskCreated || isAIWithTask) && (
               <div className="text-xs text-green-600 mt-2 text-left flex items-center space-x-1">
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
