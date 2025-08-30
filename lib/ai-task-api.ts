@@ -508,13 +508,13 @@ export class AITaskAPIService {
 
     if (filter.createdBefore) {
       filtered = filtered.filter(task => 
-        new Date(task.created_at) <= filter.createdBefore!
+        task.created_at && new Date(task.created_at) <= filter.createdBefore!
       )
     }
 
     if (filter.createdAfter) {
       filtered = filtered.filter(task => 
-        new Date(task.created_at) >= filter.createdAfter!
+        task.created_at && new Date(task.created_at) >= filter.createdAfter!
       )
     }
 
