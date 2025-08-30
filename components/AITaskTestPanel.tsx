@@ -237,7 +237,7 @@ export default function AITaskTestPanel({ userId, className = '' }: AITaskTestPa
           <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded">
             <p><strong>Instructions:</strong></p>
             <p>1. Enter a user message and AI response</p>
-            <p>2. Click "Run Test" to check if a task would be created</p>
+            <p>2. Click &quot;Run Test&quot; to check if a task would be created</p>
             <p>3. Use quick test cases for common scenarios</p>
             <p>4. Check console for detailed debugging information</p>
           </div>
