@@ -66,7 +66,10 @@ export function useInstantTasks(userId?: string): UseInstantTasksReturn {
     const handleCacheUpdate = () => {
       if (!mountedRef.current) return
       const updatedTasks = cache.getCachedTasks()
+      console.log('🔄 [HOOK] Cache updated, refreshing tasks. New count:', updatedTasks.length)
+      console.log('🔄 [HOOK] Updated task IDs:', updatedTasks.map(t => t.id))
       setTasks(updatedTasks)
+      console.log('🔄 [HOOK] ✅ React state updated with new tasks')
     }
 
     cache.addListener(handleCacheUpdate)
@@ -213,10 +216,11 @@ export function useInstantTasks(userId?: string): UseInstantTasksReturn {
 
     try {
       setError(null)
+      console.log('🗑️ [HOOK] Starting task deletion for:', taskId)
       await cacheRef.current.deleteTask(taskId)
-      console.log('Task deleted successfully:', taskId)
+      console.log('🗑️ [HOOK] ✅ Task deleted successfully from cache:', taskId)
     } catch (err) {
-      console.error('Error deleting task:', err)
+      console.error('🗑️ [HOOK] ❌ Error deleting task:', err)
       const error = err instanceof Error ? err : new Error('Failed to delete task')
       setError(error)
       throw error

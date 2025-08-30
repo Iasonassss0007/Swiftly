@@ -187,10 +187,13 @@ export class TaskCache {
       }
 
       localStorage.setItem(this.getCacheKey(), JSON.stringify(cacheData))
-      console.log(`Cached ${tasks.length} tasks for user:`, this.userId)
+      console.log(`💾 [CACHE UPDATE] Cached ${tasks.length} tasks for user:`, this.userId)
+      console.log(`💾 [CACHE UPDATE] Task IDs in cache:`, tasks.map(t => t.id))
       
       // Notify listeners of cache update
+      console.log(`💾 [CACHE UPDATE] Notifying ${this.listeners.size} listeners of cache change`)
       this.notifyListeners()
+      console.log(`💾 [CACHE UPDATE] ✅ Cache update and listener notification completed`)
     } catch (error) {
       console.error('Error caching tasks:', error)
     }
@@ -381,47 +384,59 @@ export class TaskCache {
   async deleteTask(taskId: string): Promise<void> {
     const currentTasks = this.getCachedTasks()
     
-    console.log('Attempting to delete task:', taskId)
-    console.log('Current tasks in cache:', currentTasks.map(t => ({ id: t.id, title: t.title })))
+    console.log('🗑️ [DELETE TASK] Starting deletion process for:', taskId)
+    console.log('🗑️ [DELETE TASK] Current tasks in cache:', currentTasks.map(t => ({ id: t.id, title: t.title, isTemp: t.id.startsWith('temp_') })))
     
     // Check if task exists in cache
     const taskToDelete = currentTasks.find(task => task.id === taskId)
     if (!taskToDelete) {
-      console.error('Task not found in cache for deletion:', taskId)
+      console.error('🗑️ [DELETE TASK] ❌ Task not found in cache for deletion:', taskId)
       throw new Error(`Task with ID ${taskId} not found in cache`)
     }
+    
+    console.log('🗑️ [DELETE TASK] Found task to delete:', { id: taskToDelete.id, title: taskToDelete.title })
     
     // Skip database deletion if this is a temporary task (AI-created task that hasn't been saved yet)
     const isTempTask = taskId.startsWith('temp_')
     if (isTempTask) {
-      console.log('Deleting temporary task (not yet saved to database):', taskId)
+      console.log('🗑️ [DELETE TASK] 🔄 Deleting temporary task (not saved to database):', taskId)
       // Just remove from cache for temporary tasks
       const optimisticTasks = currentTasks.filter(task => task.id !== taskId)
+      console.log('🗑️ [DELETE TASK] 💾 Updated cache after temp task deletion, remaining tasks:', optimisticTasks.length)
       this.setCachedTasks(optimisticTasks)
+      console.log('🗑️ [DELETE TASK] ✅ Temporary task deletion completed')
       return
     }
     
-    // Optimistic update - remove task from cache
+    // Optimistic update - remove task from cache IMMEDIATELY
+    console.log('🗑️ [DELETE TASK] 🚀 Performing optimistic cache update (removing from UI)...')
     const optimisticTasks = currentTasks.filter(task => task.id !== taskId)
+    console.log('🗑️ [DELETE TASK] 💾 Tasks after optimistic removal:', optimisticTasks.length, 'remaining')
     this.setCachedTasks(optimisticTasks)
+    console.log('🗑️ [DELETE TASK] ✅ Optimistic UI update completed - task should disappear from UI now')
 
     try {
       // Delete from database
-      console.log('Deleting task from database:', taskId)
+      console.log('🗑️ [DELETE TASK] 💾 Starting database deletion for:', taskId)
       const { error } = await supabase
         .from('tasks')
         .delete()
         .eq('id', taskId)
 
       if (error) {
-        console.error('Database deletion error:', error)
+        console.error('🗑️ [DELETE TASK] ❌ Database deletion error:', error)
+        // Rollback optimistic update
+        console.log('🗑️ [DELETE TASK] 🔄 Rolling back optimistic update due to database error')
+        this.setCachedTasks(currentTasks)
         throw error
       }
 
-      console.log('Task deleted successfully from database:', taskId)
+      console.log('🗑️ [DELETE TASK] ✅ Task deleted successfully from database:', taskId)
+      console.log('🗑️ [DELETE TASK] 🎉 Task deletion completed successfully! Task should be gone from UI and database.')
     } catch (error) {
-      console.error('Error deleting task, rolling back cache:', error)
-      // Rollback optimistic update on error
+      console.error('🗑️ [DELETE TASK] ❌ Failed to delete task from database, rolling back cache:', taskId, error)
+      // Rollback the optimistic update
+      console.log('🗑️ [DELETE TASK] 🔄 Rolling back cache to restore task in UI')
       this.setCachedTasks(currentTasks)
       throw error
     }

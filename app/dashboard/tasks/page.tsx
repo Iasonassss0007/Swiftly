@@ -109,6 +109,12 @@ export default function TasksPage() {
     cleanupTempTasks
   } = useInstantTasks(user?.id)
 
+  // Debug: Log task state changes
+  useEffect(() => {
+    console.log('🏠 [TASKS PAGE] Task state updated. Current tasks:', tasks.length)
+    console.log('🏠 [TASKS PAGE] Task IDs:', tasks.map(t => ({ id: t.id, title: t.title, isTemp: t.id.startsWith('temp_') })))
+  }, [tasks])
+
   // State for AI task notifications
   const [aiTaskNotification, setAiTaskNotification] = useState<{ task: Task; show: boolean } | null>(null)
 
@@ -310,9 +316,12 @@ export default function TasksPage() {
     if (!user) return
 
     try {
+      console.log('🏠 [TASKS PAGE] Starting task deletion from UI for:', taskId)
+      console.log('🏠 [TASKS PAGE] Current tasks before deletion:', tasks.length)
       await deleteTask(taskId)
+      console.log('🏠 [TASKS PAGE] ✅ Task deletion completed from UI side')
     } catch (err) {
-      console.error('Error deleting task:', err)
+      console.error('🏠 [TASKS PAGE] ❌ Error deleting task:', err)
     }
   }
 
