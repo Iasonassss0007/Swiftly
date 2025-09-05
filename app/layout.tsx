@@ -1,13 +1,13 @@
 import type { Metadata } from 'next'
-import { Libre_Franklin } from 'next/font/google'
+import { Poppins } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/lib/auth-context'
 import { CacheProvider } from '@/lib/cache-provider'
 
-const libreFranklin = Libre_Franklin({ 
+const poppins = Poppins({ 
   subsets: ['latin'],
   weight: ['300', '400', '500', '600', '700', '800', '900'],
-  variable: '--font-libre-franklin'
+  variable: '--font-poppins'
 })
 
 export const metadata: Metadata = {
@@ -22,7 +22,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={libreFranklin.className}>
+      <body className={poppins.className}>
         <CacheProvider>
           <AuthProvider>
             {children}

@@ -1,5 +1,5 @@
 // Re-export from the new client structure
-export { supabaseClient as supabase } from './supabaseClient'
+export { supabase, chatService } from './supabaseClient'
 
 export type Database = {
   api: {
@@ -19,7 +19,6 @@ export type Database = {
           email: string
           avatar_url?: string | null
           created_at?: string
-          updated_at?: string
         }
         Update: {
           id?: string
@@ -27,7 +26,6 @@ export type Database = {
           email?: string
           avatar_url?: string | null
           created_at?: string
-          updated_at?: string
         }
       }
       tasks: {
@@ -58,10 +56,10 @@ export type Database = {
           due_date?: string | null
           completed?: boolean
           tags?: string[] | null
-          assignees?: any[] | null
-          subtasks?: any[] | null
-          attachments?: any[] | null
-          comments?: any[] | null
+          assignees?: string[] | null
+          subtasks?: string[] | null
+          attachments?: string[] | null
+          comments?: string[] | null
           created_at?: string
           updated_at?: string
         }
@@ -75,10 +73,10 @@ export type Database = {
           due_date?: string | null
           completed?: boolean
           tags?: string[] | null
-          assignees?: any[] | null
-          subtasks?: any[] | null
-          attachments?: any[] | null
-          comments?: any[] | null
+          assignees?: string[] | null
+          subtasks?: string[] | null
+          attachments?: string[] | null
+          comments?: string[] | null
           created_at?: string
           updated_at?: string
         }
@@ -113,6 +111,35 @@ export type Database = {
           expires_at?: string | null
           metadata?: any
           session_type?: string | null
+        }
+      }
+      chat_messages: {
+        Row: {
+          id: string
+          user_id: string
+          sender: 'user' | 'ai'
+          message_text: string
+          created_at: string
+          session_id: string
+          metadata: any
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          sender: 'user' | 'ai'
+          message_text: string
+          created_at?: string
+          session_id?: string
+          metadata?: any
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          sender?: 'user' | 'ai'
+          message_text?: string
+          created_at?: string
+          session_id?: string
+          metadata?: any
         }
       }
     }

@@ -9,13 +9,53 @@
   }
   
   body {
-    @apply bg-[#F8FAFC] text-[#0F1626] font-libre-franklin;
+    @apply bg-[#F8FAFC] text-[#0F1626] font-poppins;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     overflow-x: hidden;
   }
   
-  /* Ensure all text elements use Libre Franklin */
+  /* Ensure all text elements use Poppins */
   h1, h2, h3, h4, h5, h6, p, span, div, button, input, textarea, label {
-    font-family: 'Libre Franklin', system-ui, sans-serif;
+    font-family: 'Poppins', system-ui, sans-serif;
+  }
+  
+  /* Modal scroll lock styles */
+  body.modal-open {
+    overflow: hidden !important;
+    position: fixed !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  
+  /* Hide scrollbars for calendar */
+  .hide-scrollbar {
+    scrollbar-width: none !important; /* Firefox */
+    -ms-overflow-style: none !important; /* Internet Explorer 10+ */
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none !important; /* WebKit */
+    width: 0 !important;
+    height: 0 !important;
+  }
+  
+  .hide-scrollbar::-webkit-scrollbar-track {
+    background: transparent !important;
+  }
+  
+  .hide-scrollbar::-webkit-scrollbar-thumb {
+    background: transparent !important;
+  }
+  
+  /* Additional scrollbar hiding for calendar specific areas */
+  .calendar-container * {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  
+  .calendar-container *::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
 }

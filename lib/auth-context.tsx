@@ -80,6 +80,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
     try {
       console.log('Fetching profile for user:', userId)
+      console.log('Current auth state:', { user: user?.id, session: session?.user?.id })
+      
+      // Check if user is authenticated
+      const { data: { session: currentSession } } = await supabase.auth.getSession()
+      if (!currentSession) {
+        console.error('No active session found when trying to fetch profile')
+        return null
+      }
+      
+      console.log('Active session found:', currentSession.user.id)
+      
+      // Test database connection first
+      console.log('Testing database connection...')
+      try {
+              const { count, error: testError } = await supabase
+        .from("api.profiles")
+        .select("id", { count: "exact", head: true })
+        
+        console.log('Database test result:', { count, testError })
+        
+        if (testError) {
+          console.error('Database connection test failed:', testError)
+        }
+      } catch (testErr) {
+        console.error('Database test exception:', testErr)
+      }
       
       const { data, error } = await supabase
         .from('profiles')
@@ -87,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('id', userId)
         .single()
 
-      // console.log('Profile fetch response:', { data, error })
+      console.log('Profile fetch response:', { data, error })
 
       if (error) {
         console.error('Profile fetch error:', error)
@@ -97,16 +123,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           details: error.details,
           hint: error.hint
         })
+        
+        // Log additional debugging info
+        console.error('Debug info:', {
+          userId,
+          currentUser: user?.id,
+          currentSession: session?.user?.id,
+          activeSession: currentSession?.user?.id,
+          supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL
+        })
+        
         return null
       }
 
-      // console.log('Profile fetched successfully:', data)
+      console.log('Profile fetched successfully:', data)
       return data
     } catch (error) {
       console.error('Unexpected error fetching profile:', error)
       return null
     }
-  }, [])
+  }, [user, session])
 
   // Create user profile in profiles table - memoized to prevent recreation
   const createProfile = useCallback(async (userId: string, fullName: string, email: string): Promise<{ error: any }> => {
@@ -133,31 +169,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // TODO: Re-enable database operations after running migration
       console.log(`Would create profile for user ${userId} with name ${fullName} and email ${email}`)
       
-      // const { data, error } = await supabase
-      //   .from('profiles')
-      //   .insert({
-      //     id: userId,
-      //     full_name: fullName,
-      //     email: email,
-      //     avatar_url: null
-      //   })
-      //   .select()
-      //   .single() as { data: Profile | null, error: any }
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          full_name: fullName,
+          email: email,
+          avatar_url: null
+        })
+        .select()
+        .single() as { data: Profile | null, error: any }
 
-      // if (error) {
-      //   console.error('Profile creation error:', error)
-      //   console.error('Error details:', {
-      //     code: error.code,
-      //     message: error.message,
-      //     details: error.details,
-      //     hint: error.hint
-      //   })
-      //   return { error }
-      // }
+      if (error) {
+        console.error('Profile creation error:', error)
+        console.error('Error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        })
+        return { error }
+      }
 
       // Update the profile state immediately
-      // setProfile(data)
-      // console.log('Profile created successfully:', data)
+      setProfile(data)
+      console.log('Profile created successfully:', data)
       return { error: null }
     } catch (error) {
       console.error('Unexpected error creating profile:', error)
@@ -373,6 +409,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log('Starting sign out process...')
       
+      // Log logout session activity before clearing user data
+      if (user?.id) {
+        try {
+          await supabase.from('user_sessions').insert({
+            user_id: user.id,
+            session_data: {
+              event: 'SIGNED_OUT',
+              device: 'web',
+              user_agent: navigator.userAgent,
+              timestamp: new Date().toISOString()
+            }
+          })
+          console.log('Session SIGNED_OUT logged to user_sessions table')
+        } catch (error) {
+          console.error('Failed to log logout session activity:', error)
+          // Continue execution even if logging fails
+        }
+      }
+      
       // Revoke refresh token if available
       if (refreshToken) {
         try {
@@ -418,7 +473,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Force redirect even if there's an error
       router.push(redirectPath || '/')
     }
-  }, [refreshToken, cleanupTokenRefresh, router])
+  }, [refreshToken, cleanupTokenRefresh, router, user])
 
   // Wait for session to be established before redirecting
   const waitForSession = useCallback(async (): Promise<Session | null> => {
@@ -743,24 +798,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           globalSignInProcessed = true
           console.log('Processing SIGNED_IN event...')
           
-          // TODO: Re-enable database operations after running migration
           // Log session activity to user_sessions table
-          console.log(`Would log SIGNED_IN event for user ${session.user.id}`)
-          
-          // try {
-          //   await supabase.from('user_sessions').insert({
-          //     user_id: session.user.id,
-          //     session_data: {
-          //       event: 'SIGNED_IN',
-          //       device: 'web',
-          //       user_agent: navigator.userAgent
-          //     }
-          //   })
-          //   console.log('Session SIGNED_IN logged to user_sessions table')
-          // } catch (error) {
-          //   console.error('Failed to log session activity to user_sessions table:', error)
-          //   // Continue execution even if logging fails
-          // }
+          try {
+            await supabase.from('user_sessions').insert({
+              user_id: session.user.id,
+              session_data: {
+                event: 'SIGNED_IN',
+                device: 'web',
+                user_agent: navigator.userAgent,
+                timestamp: new Date().toISOString()
+              }
+            })
+            console.log('Session SIGNED_IN logged to user_sessions table')
+          } catch (error) {
+            console.error('Failed to log session activity to user_sessions table:', error)
+            // Continue execution even if logging fails
+          }
           
           // Set session state
           setSession(session)

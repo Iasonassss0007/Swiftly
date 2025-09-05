@@ -64,20 +64,34 @@ import { useRouter } from 'next/navigation'
 import Layout from '@/components/Layout'
 import { useAuth, createUserData } from '@/lib/auth-context'
 import { supabase } from '@/lib/supabase'
-import TasksPageHeader from '@/components/tasks/TasksPageHeader'
+import TasksPageHeader, { TaskView } from '@/components/tasks/TasksPageHeader'
 import TaskList from '@/components/tasks/TaskList'
-import KanbanBoard from '@/components/tasks/KanbanBoard'
-import GanttChart from '@/components/tasks/GanttChart'
 import TaskDetailsPanel from '@/components/tasks/TaskDetailsPanel'
-import NewTaskModal from '@/components/tasks/NewTaskModal'
+import CreateTaskModal from '@/components/tasks/CreateTaskModal'
+import EditTaskModal from '@/components/tasks/EditTaskModal'
 import { Task } from '@/components/tasks/TaskRow'
+import { User } from '@/types'
 import { useInstantTasks } from '@/lib/use-instant-tasks'
 import { clearAllCaches } from '@/lib/task-cache'
-import { useAITaskListener } from '@/lib/use-ai-task-integration'
+import KanbanBoard from '@/components/tasks/KanbanBoard'
+import GanttChart from '@/components/tasks/GanttChart'
 
 export default function TasksPage() {
   const { user, profile, loading } = useAuth()
   const [sessionLoading, setSessionLoading] = useState(true)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const savedCollapsedState = localStorage.getItem('swiftly-sidebar-collapsed')
+        return savedCollapsedState !== null ? JSON.parse(savedCollapsedState) : false
+      } catch (error) {
+        console.warn('Failed to load sidebar state from localStorage:', error)
+        return false
+      }
+    }
+    return false
+  })
+  const [currentView, setCurrentView] = useState<TaskView>('list')
   const router = useRouter()
 
   /**
@@ -115,22 +129,23 @@ export default function TasksPage() {
     console.log('🏠 [TASKS PAGE] Task IDs:', tasks.map(t => ({ id: t.id, title: t.title, isTemp: t.id.startsWith('temp_') })))
   }, [tasks])
 
-  // State for AI task notifications
-  const [aiTaskNotification, setAiTaskNotification] = useState<{ task: Task; show: boolean } | null>(null)
-
-  // Listen for AI-created tasks and show notifications
-  useAITaskListener(user?.id, (task) => {
-    console.log('AI task created, showing notification:', task.title)
-    setAiTaskNotification({ task, show: true })
-    
-    // Auto-hide notification after 4 seconds
-    setTimeout(() => {
-      setAiTaskNotification(prev => prev ? { ...prev, show: false } : null)
-      // Remove notification after fade out
-      setTimeout(() => setAiTaskNotification(null), 300)
-    }, 4000)
-  })
   
+  // Listen for sidebar state changes
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'swiftly-sidebar-collapsed' && e.newValue !== null) {
+        try {
+          setSidebarCollapsed(JSON.parse(e.newValue))
+        } catch (error) {
+          console.warn('Failed to parse sidebar state from localStorage:', error)
+        }
+      }
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
+
   // Clean up any stale temporary tasks on mount and periodically
   useEffect(() => {
     if (user?.id) {
@@ -156,33 +171,14 @@ export default function TasksPage() {
 
   // Task management state
   const [searchTerm, setSearchTerm] = useState('')
-  const [currentView, setCurrentView] = useState<'list' | 'kanban' | 'gantt'>('list')
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showNewTaskModal, setShowNewTaskModal] = useState(false)
+  const [showEditTaskModal, setShowEditTaskModal] = useState(false)
   const [newTaskStatus, setNewTaskStatus] = useState<Task['status']>('todo')
   const [editingTask, setEditingTask] = useState<Task | null>(null)
 
-  // Sample data for demonstration
-  const availableUsers = [
-    {
-      id: '1',
-      name: 'John Doe',
-      email: 'john@example.com',
-      avatarUrl: undefined
-    },
-    {
-      id: '2',
-      name: 'Jane Smith',
-      email: 'jane@example.com',
-      avatarUrl: undefined
-    },
-    {
-      id: '3',
-      name: 'Mike Johnson',
-      email: 'mike@example.com',
-      avatarUrl: undefined
-    }
-  ]
+  // Available users - empty for now, can be populated from real user data
+  const availableUsers: User[] = []
 
   const availableTags = [
     'Frontend',
@@ -266,14 +262,9 @@ export default function TasksPage() {
   const handleSaveTask = async (newTask: Omit<Task, 'id'>) => {
     if (!user) return
 
-    try {
-      await addTask(newTask)
-      setShowNewTaskModal(false)
-      setEditingTask(null)
-    } catch (err) {
-      console.error('Error creating task:', err)
-      // TODO: Show user-friendly error message
-    }
+    await addTask(newTask)
+    setShowNewTaskModal(false)
+    setEditingTask(null)
   }
 
   /**
@@ -283,15 +274,20 @@ export default function TasksPage() {
   const handleUpdateTask = async (updatedTask: Task) => {
     if (!user) return
 
-    try {
-      await updateTask(updatedTask.id, updatedTask)
-      setShowNewTaskModal(false)
-      setEditingTask(null)
-    } catch (err) {
-      console.error('Error updating task:', err)
-      // TODO: Show user-friendly error message
-    }
+    await updateTask(updatedTask.id, updatedTask)
+    setShowNewTaskModal(false)
+    setShowEditTaskModal(false)
+    setEditingTask(null)
   }
+
+  /**
+   * Open edit modal for a specific task
+   */
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task)
+    setShowEditTaskModal(true)
+  }
+
 
   const handleToggleComplete = async (taskId: string) => {
     if (!user) return
@@ -312,17 +308,21 @@ export default function TasksPage() {
     }
   }
 
+  /**
+   * Delete task with confirmation and modal cleanup
+   */
   const handleDeleteTask = async (taskId: string) => {
     if (!user) return
 
-    try {
-      console.log('🏠 [TASKS PAGE] Starting task deletion from UI for:', taskId)
-      console.log('🏠 [TASKS PAGE] Current tasks before deletion:', tasks.length)
-      await deleteTask(taskId)
-      console.log('🏠 [TASKS PAGE] ✅ Task deletion completed from UI side')
-    } catch (err) {
-      console.error('🏠 [TASKS PAGE] ❌ Error deleting task:', err)
-    }
+    console.log('🏠 [TASKS PAGE] Starting task deletion from UI for:', taskId)
+    console.log('🏠 [TASKS PAGE] Current tasks before deletion:', tasks.length)
+    await deleteTask(taskId)
+    console.log('🏠 [TASKS PAGE] ✅ Task deletion completed from UI side')
+    
+    // Close any open modals and clear selected task
+    setShowEditTaskModal(false)
+    setEditingTask(null)
+    setSelectedTask(null)
   }
 
   const handleMenuAction = (taskId: string, action: 'edit' | 'duplicate' | 'archive' | 'delete') => {
@@ -356,13 +356,6 @@ export default function TasksPage() {
     }
   }
 
-  const handleTaskMove = (taskId: string, newStatus: Task['status']) => {
-    const task = tasks.find(t => t.id === taskId)
-    if (task) {
-      const updatedTask: Task = { ...task, status: newStatus }
-      handleUpdateTask(updatedTask)
-    }
-  }
 
   const handleBulkAction = async (taskIds: string[], action: 'complete' | 'delete' | 'archive') => {
     if (!user) return
@@ -392,20 +385,24 @@ export default function TasksPage() {
     }
   }
 
+  // Handle task movement for Kanban board
+  const handleTaskMove = (taskId: string, newStatus: string) => {
+    // This would typically update the task status in the database
+    console.log(`Moving task ${taskId} to status ${newStatus}`)
+    // You can implement the actual status update logic here
+  }
+
   const renderCurrentView = () => {
     switch (currentView) {
       case 'list':
-        return (
+  return (
           <TaskList
             tasks={tasks}
             searchTerm={searchTerm}
             onTaskClick={setSelectedTask}
             onToggleComplete={handleToggleComplete}
             onMenuAction={handleMenuAction}
-            onEdit={(task) => {
-              setEditingTask(task)
-              setShowNewTaskModal(true)
-            }}
+            onEdit={handleEditTask}
             onBulkAction={handleBulkAction}
           />
         )
@@ -413,37 +410,58 @@ export default function TasksPage() {
         return (
           <KanbanBoard
             tasks={tasks}
-            searchTerm={searchTerm}
+            searchTerm=""
             onTaskClick={setSelectedTask}
             onTaskMove={handleTaskMove}
-            onMenuAction={handleMenuAction}
-            onNewTask={handleNewTask}
+            onMenuAction={(taskId, action) => {
+              if (action === 'edit') {
+                const task = tasks.find(t => t.id === taskId)
+                if (task) {
+                  setEditingTask(task)
+                  setShowNewTaskModal(true)
+                }
+              }
+            }}
+            onNewTask={(status) => {
+              setNewTaskStatus(status)
+              setShowNewTaskModal(true)
+            }}
           />
         )
       case 'gantt':
         return (
           <GanttChart
             tasks={tasks}
-            searchTerm={searchTerm}
+            searchTerm=""
             onTaskClick={setSelectedTask}
           />
         )
       default:
-        return null
+    return (
+          <TaskList
+            tasks={tasks}
+            searchTerm={searchTerm}
+            onTaskClick={setSelectedTask}
+            onToggleComplete={handleToggleComplete}
+            onMenuAction={handleMenuAction}
+            onEdit={handleEditTask}
+            onBulkAction={handleBulkAction}
+          />
+        )
     }
   }
 
   // Only show loading for authentication, not for tasks
   if (loading || sessionLoading) {
-    return (
+  return (
       <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-[#111C59]/20 border-t-[#111C59] rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-[#4F5F73]">Authenticating...</p>
-        </div>
-      </div>
-    )
-  }
+              </div>
+          </div>
+  )
+}
 
   // Show loading while redirecting
   if (!user) {
@@ -455,7 +473,9 @@ export default function TasksPage() {
 
   return (
     <Layout user={userData}>
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className={`mx-auto space-y-6 transition-all duration-200 ${
+        sidebarCollapsed ? 'max-w-none px-6' : 'max-w-7xl'
+      }`}>
 
 
         {/* Subtle Error Display - Less prominent since we have cached data */}
@@ -465,75 +485,30 @@ export default function TasksPage() {
               <div className="flex-shrink-0">
                 <svg className="h-4 w-4 text-orange-400" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
+                  </svg>
               </div>
               <div className="ml-2 flex-1">
                 <p className="text-sm text-orange-700">Sync issue: {error.message}</p>
                 <p className="text-xs text-orange-600 mt-1">Showing cached data. Will retry automatically.</p>
-              </div>
-              <button
+            </div>
+                <button
                 onClick={() => refreshTasks()}
                 className="ml-2 px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded hover:bg-orange-200 transition-colors"
               >
                 Retry
-              </button>
-            </div>
-          </div>
+          </button>
+              </div>
+        </div>
         )}
 
         {/* Header */}
         <TasksPageHeader
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
+          onNewTask={() => handleNewTask()}
           currentView={currentView}
           onViewChange={setCurrentView}
-          onNewTask={() => handleNewTask()}
-          onRefresh={handleRefreshData}
-          // Show cache controls in development
-          {...(process.env.NODE_ENV === 'development' && {
-            onClearCache: handleClearCache,
-            isBackgroundSyncing
-          })}
         />
-
-        {/* Subtle Background Sync Indicator - Only shows when syncing with cached data */}
-        {isBackgroundSyncing && tasks.length > 0 && (
-          <div className="fixed top-4 right-4 z-50">
-            <div className="bg-blue-500 text-white px-3 py-2 rounded-lg shadow-lg flex items-center space-x-2 text-sm">
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              <span>Syncing...</span>
-            </div>
-          </div>
-        )}
-
-        {/* AI Task Creation Notification */}
-        {aiTaskNotification && (
-          <div className={`fixed top-4 right-4 z-50 transition-all duration-300 transform ${
-            aiTaskNotification.show 
-              ? 'translate-y-0 opacity-100 scale-100' 
-              : 'translate-y-2 opacity-0 scale-95'
-          }`}>
-            <div className="bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center space-x-3 max-w-sm">
-              <div className="flex-shrink-0">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">Task Created from AI Chat</p>
-                <p className="text-xs opacity-90 truncate">{aiTaskNotification.task.title}</p>
-              </div>
-              <button
-                onClick={() => setAiTaskNotification(prev => prev ? { ...prev, show: false } : null)}
-                className="flex-shrink-0 text-white/80 hover:text-white transition-colors"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Main Content */}
         {renderCurrentView()}
@@ -551,26 +526,63 @@ export default function TasksPage() {
             }
           }}
           onEdit={(task) => {
-            setEditingTask(task)
-            setShowNewTaskModal(true)
+            handleEditTask(task)
             setSelectedTask(null) // Close details panel
           }}
           availableUsers={availableUsers}
           availableTags={availableTags}
         />
 
-        {/* New Task Modal */}
-        <NewTaskModal
+        {/* Create Task Modal */}
+        <CreateTaskModal
           isOpen={showNewTaskModal}
           onClose={handleCloseModal}
-          onSave={handleSaveTask}
-          onUpdate={handleUpdateTask}
-          editTask={editingTask}
-          initialStatus={newTaskStatus}
-          availableUsers={availableUsers}
-          availableTags={availableTags}
+                      onCreateTask={async (taskData) => {
+              if (editingTask) {
+                // Handle editing existing task
+                const updatedTask = {
+                  ...editingTask,
+                  ...taskData,
+                  assignees: Array.isArray(taskData.assignees) && taskData.assignees.length > 0 && typeof taskData.assignees[0] === 'string'
+                    ? (taskData.assignees as string[]).map(id => availableUsers.find(u => u.id === id)).filter(Boolean) as User[]
+                    : (taskData.assignees as unknown as User[] || [])
+                }
+                await handleUpdateTask(updatedTask)
+              } else {
+                // Handle creating new task
+                const newTask = {
+                  ...taskData,
+                  assignees: Array.isArray(taskData.assignees) && taskData.assignees.length > 0 && typeof taskData.assignees[0] === 'string'
+                    ? (taskData.assignees as string[]).map(id => availableUsers.find(u => u.id === id)).filter(Boolean) as User[]
+                    : (taskData.assignees as unknown as User[] || [])
+                }
+                await handleSaveTask(newTask as Omit<Task, 'id'>)
+              }
+            }}
+          users={availableUsers}
+          existingTasks={tasks}
+          editingTask={editingTask ? {
+            ...editingTask,
+            assignees: editingTask.assignees.map(assignee => 
+              typeof assignee === 'string' ? assignee : assignee.id
+            )
+          } : null}
+            />
+
+        {/* Edit Task Modal */}
+        <EditTaskModal
+          isOpen={showEditTaskModal}
+          onClose={() => {
+            setShowEditTaskModal(false)
+            setEditingTask(null)
+          }}
+          onSave={handleUpdateTask}
+          onDelete={handleDeleteTask}
+          task={editingTask}
+          users={availableUsers}
+          existingTasks={tasks}
         />
-      </div>
+          </div>
     </Layout>
   )
 }

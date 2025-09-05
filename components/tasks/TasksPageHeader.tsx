@@ -1,30 +1,30 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, Plus, List, Kanban, Calendar, BarChart3, RefreshCw } from 'lucide-react'
+import { Search, Plus, List, Grid3X3, BarChart3 } from 'lucide-react'
+
+export type TaskView = 'list' | 'kanban' | 'gantt'
 
 interface TasksPageHeaderProps {
   searchTerm: string
   onSearchChange: (term: string) => void
-  currentView: 'list' | 'kanban' | 'gantt'
-  onViewChange: (view: 'list' | 'kanban' | 'gantt') => void
   onNewTask: () => void
-  onRefresh?: () => void
+  currentView: TaskView
+  onViewChange: (view: TaskView) => void
 }
 
 export default function TasksPageHeader({
   searchTerm,
   onSearchChange,
-  currentView,
-  onViewChange,
   onNewTask,
-  onRefresh
+  currentView,
+  onViewChange
 }: TasksPageHeaderProps) {
   const viewOptions = [
     { id: 'list', label: 'List', icon: List },
-    { id: 'kanban', label: 'Kanban', icon: Kanban },
+    { id: 'kanban', label: 'Kanban', icon: Grid3X3 },
     { id: 'gantt', label: 'Gantt', icon: BarChart3 }
-  ]
+  ] as const
 
   return (
     <div className="bg-white/95 backdrop-blur-sm border border-[#ADB3BD]/30 rounded-xl p-6 mb-6 shadow-lg">
@@ -43,40 +43,28 @@ export default function TasksPageHeader({
           </div>
         </div>
 
-        {/* View Toggle Controls and New Task Button */}
+        {/* View Toggle and New Task Button */}
         <div className="flex items-center gap-4">
           {/* View Toggle */}
           <div className="flex bg-[#F8FAFC] border border-[#ADB3BD]/30 rounded-lg p-1">
             {viewOptions.map((option) => {
-              const Icon = option.icon
+              const IconComponent = option.icon
               return (
                 <button
                   key={option.id}
-                  onClick={() => onViewChange(option.id as any)}
+                  onClick={() => onViewChange(option.id)}
                   className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
                     currentView === option.id
-                      ? 'bg-[#111C59] text-white shadow-sm'
+                      ? 'bg-white text-[#111C59] shadow-sm border border-[#ADB3BD]/20'
                       : 'text-[#4F5F73] hover:text-[#111C59] hover:bg-white/50'
                   }`}
-                  title={option.label}
                 >
-                  <Icon className="w-4 h-4" />
+                  <IconComponent className="w-4 h-4" />
                   <span className="hidden sm:inline">{option.label}</span>
                 </button>
               )
             })}
           </div>
-
-          {/* Refresh Button */}
-          {onRefresh && (
-            <button
-              onClick={onRefresh}
-              className="flex items-center gap-2 bg-gray-100 text-gray-600 px-3 py-3 rounded-lg font-medium hover:bg-gray-200 transition-all duration-200"
-              title="Refresh data"
-            >
-              <RefreshCw className="w-5 h-5" />
-            </button>
-          )}
 
           {/* New Task Button */}
           <button

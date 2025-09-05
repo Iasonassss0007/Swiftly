@@ -8,7 +8,7 @@
 'use client'
 
 import { useState } from 'react'
-import { processAIForTasks, TaskCreationResult } from '@/lib/ai-task-service'
+import { TaskIntentResult } from '@/lib/gemini-task-intent'
 
 interface AITaskTestPanelProps {
   userId?: string
@@ -20,6 +20,11 @@ const QUICK_TEST_CASES = [
     name: "Basic Task",
     userMessage: "Create a task called 'Review presentation'",
     aiResponse: "I'll help you create that task for reviewing the presentation."
+  },
+  {
+    name: "Named Task (Required Fix)",
+    userMessage: "Create a task named Job interview",
+    aiResponse: "I'll create that task for you."
   },
   {
     name: "Task with Due Date",
@@ -35,38 +40,40 @@ const QUICK_TEST_CASES = [
     name: "Non-Task",
     userMessage: "What's the weather forecast?",
     aiResponse: "The weather forecast shows sunny skies with 75°F today."
+  },
+  {
+    name: "Greek Task",
+    userMessage: "Δημιούργησε μια εργασία που λέγεται Συνάντηση",
+    aiResponse: "Θα δημιουργήσω αυτή την εργασία για εσάς."
+  },
+  {
+    name: "Spanish Task",
+    userMessage: "Crea una tarea llamada Reunión",
+    aiResponse: "Voy a crear esa tarea para ti."
+  },
+  {
+    name: "French Task",
+    userMessage: "Crée une tâche appelée Courses",
+    aiResponse: "Je vais créer cette tâche pour vous."
   }
 ]
 
 export default function AITaskTestPanel({ userId, className = '' }: AITaskTestPanelProps) {
   const [userMessage, setUserMessage] = useState('')
   const [aiResponse, setAiResponse] = useState('')
-  const [testResult, setTestResult] = useState<TaskCreationResult | null>(null)
+  const [testResult, setTestResult] = useState<TaskIntentResult | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
 
   const runTest = async () => {
-    if (!userId || !userMessage.trim() || !aiResponse.trim()) {
-      alert('Please provide user ID, user message, and AI response')
-      return
-    }
-
     setIsLoading(true)
-    setTestResult(null)
-
-    try {
-      const result = await processAIForTasks(userId, userMessage, aiResponse)
-      setTestResult(result)
-    } catch (error) {
-      console.error('Test error:', error)
-      setTestResult({
-        success: false,
-        detected: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      })
-    } finally {
-      setIsLoading(false)
-    }
+    setTestResult({
+      hasTaskIntent: false,
+      taskName: null,
+      needsClarity: true,
+      clarificationMessage: 'AI task creation has been disabled'
+    })
+    setIsLoading(false)
   }
 
   const loadQuickTest = (testCase: typeof QUICK_TEST_CASES[0]) => {
@@ -120,7 +127,7 @@ export default function AITaskTestPanel({ userId, className = '' }: AITaskTestPa
             <div className="grid grid-cols-2 gap-2">
               {QUICK_TEST_CASES.map((testCase, index) => (
                 <button
-                  key={index}
+                  key={testCase.name}
                   onClick={() => loadQuickTest(testCase)}
                   className="text-xs px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded transition-colors text-left"
                 >
@@ -182,52 +189,46 @@ export default function AITaskTestPanel({ userId, className = '' }: AITaskTestPa
               
               <div className="space-y-2 text-xs">
                 <div className="flex items-center space-x-2">
-                  <span className="font-medium">Detected:</span>
-                  <span className={testResult.detected ? 'text-green-600' : 'text-red-600'}>
-                    {testResult.detected ? '✅ Yes' : '❌ No'}
+                  <span className="font-medium">Task Intent:</span>
+                  <span className={testResult.hasTaskIntent ? 'text-green-600' : 'text-red-600'}>
+                    {testResult.hasTaskIntent ? '✅ Yes' : '❌ No'}
                   </span>
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <span className="font-medium">Success:</span>
-                  <span className={testResult.success ? 'text-green-600' : 'text-red-600'}>
-                    {testResult.success ? '✅ Yes' : '❌ No'}
+                  <span className="font-medium">Task Created:</span>
+                  <span className={testResult.taskCreated ? 'text-green-600' : 'text-red-600'}>
+                    {testResult.taskCreated ? '✅ Yes' : '❌ No'}
                   </span>
                 </div>
 
-                {testResult.error && (
+                {testResult.clarificationMessage && (
                   <div>
-                    <span className="font-medium text-red-600">Error:</span>
-                    <div className="text-red-600 mt-1">{testResult.error}</div>
+                    <span className="font-medium text-orange-600">Message:</span>
+                    <div className="text-orange-600 mt-1">{testResult.clarificationMessage}</div>
                   </div>
                 )}
 
-                {testResult.task && (
+                {testResult.taskName && (
                   <div className="mt-2 p-2 bg-white rounded border">
-                    <div className="font-medium text-green-600 mb-1">✅ Task Created:</div>
-                    <div><strong>Title:</strong> {testResult.task.title}</div>
-                    {testResult.task.description && (
-                      <div><strong>Description:</strong> {testResult.task.description}</div>
+                    <div className="font-medium text-green-600 mb-1">✅ Task Details:</div>
+                    <div><strong>Title:</strong> {testResult.taskName}</div>
+                    {testResult.description && (
+                      <div><strong>Description:</strong> {testResult.description}</div>
                     )}
-                    <div><strong>Priority:</strong> {testResult.task.priority}</div>
-                    {testResult.task.dueDate && (
-                      <div><strong>Due Date:</strong> {testResult.task.dueDate.toLocaleDateString()}</div>
+                    {testResult.priority && (
+                      <div><strong>Priority:</strong> {testResult.priority}</div>
                     )}
-                    {testResult.task.tags && testResult.task.tags.length > 0 && (
-                      <div><strong>Tags:</strong> {testResult.task.tags.join(', ')}</div>
+                    {testResult.dueDate && (
+                      <div><strong>Due Date:</strong> {testResult.dueDate}</div>
+                    )}
+                    {testResult.tags && testResult.tags.length > 0 && (
+                      <div><strong>Tags:</strong> {testResult.tags.join(', ')}</div>
+                    )}
+                    {testResult.assignees && testResult.assignees.length > 0 && (
+                      <div><strong>Assignees:</strong> {testResult.assignees.join(', ')}</div>
                     )}
                   </div>
-                )}
-
-                {testResult.rawExtraction && (
-                  <details className="mt-2">
-                    <summary className="cursor-pointer text-gray-600 hover:text-gray-800">
-                      Raw Extraction Data
-                    </summary>
-                    <pre className="mt-1 text-xs bg-gray-100 p-2 rounded overflow-auto">
-                      {JSON.stringify(testResult.rawExtraction, null, 2)}
-                    </pre>
-                  </details>
                 )}
               </div>
             </div>

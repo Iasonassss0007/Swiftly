@@ -11,7 +11,7 @@ import { motion } from 'framer-motion'
 const plans = [
   {
     name: 'Starter Plan',
-    price: '$11.99',
+    price: '$12',
     period: '/month',
     description: 'Access to fundamental task management features.',
     features: [
@@ -25,7 +25,7 @@ const plans = [
   },
   {
     name: 'Pro Plan',
-    price: '$29.99',
+    price: '$25',
     period: '/month',
     description: 'Unlimited tasks and project management capabilities.',
     features: [
@@ -114,9 +114,9 @@ export default function BillingPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="text-center mb-12"
+          className="text-center mb-2"
         >
-          <h1 className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-[#111C59] to-[#4F5F73] bg-clip-text text-transparent mb-6">
+          <h1 className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-[#111C59] to-[#4F5F73] bg-clip-text text-transparent mb-2">
             Billing & Plans
           </h1>
           <p className="text-xl text-[#4F5F73] max-w-3xl mx-auto">
@@ -129,12 +129,12 @@ export default function BillingPage() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7 }}
-          className="mb-12"
+          className="mb-2"
         >
-          <div className="grid lg:grid-cols-3 gap-6 lg:gap-8 max-w-full mx-auto mt-6">
+          <div className="grid lg:grid-cols-3 gap-4 lg:gap-6 max-w-full mx-auto">
             {plans.map((plan, index) => (
               <motion.div
-                key={index}
+                key={plan.name}
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
@@ -171,7 +171,7 @@ export default function BillingPage() {
                 
                 <ul className="space-y-3 mb-8 flex-grow">
                   {plan.features.map((feature, featureIndex) => (
-                    <li key={featureIndex} className="flex items-center text-[#0F1626]">
+                    <li key={feature} className="flex items-center text-[#0F1626]">
                       <svg className="w-5 h-5 text-[#4F5F73] mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>

@@ -58,7 +58,7 @@ export default function Footer() {
               <h3 className="text-lg font-semibold mb-4 text-white">Support</h3>
               <ul className="space-y-3">
                 {footerLinks.Support.map((link, index) => (
-                  <li key={index}>
+                  <li key={link.name}>
                     <Link
                       href={link.href}
                       className="text-light-gray hover:text-white transition-colors duration-200 group"
@@ -84,7 +84,7 @@ export default function Footer() {
               <h3 className="text-lg font-semibold mb-4 text-white">Legal</h3>
               <ul className="space-y-3">
                 {footerLinks.Legal.map((link, index) => (
-                  <li key={index}>
+                  <li key={link.name}>
                     <Link
                       href={link.href}
                       className="text-light-gray hover:text-white transition-colors duration-200 group"

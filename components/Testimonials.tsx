@@ -59,7 +59,7 @@ export default function Testimonials() {
           <div className="flex space-x-6 pb-8">
             {testimonials.map((testimonial, index) => (
               <motion.div
-                key={index}
+                key={testimonial.name}
                 initial={{ opacity: 0, x: 50 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}

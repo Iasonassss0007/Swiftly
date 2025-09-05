@@ -6,6 +6,7 @@ import {
   generateTokenId,
   getRefreshTokenExpiry 
 } from '@/lib/jwt-utils'
+import { supabase } from '@/lib/supabaseAdmin'
 
 /**
  * POST /api/auth/restore-session
@@ -41,16 +42,26 @@ export async function POST(request: NextRequest) {
 
     const { userId, tokenId } = decodedToken
 
-    // TODO: Re-enable database operations after running migration
-    // For now, just verify the token and generate new tokens
-    
-    console.log(`Would check token ${tokenId} for user ${userId} in database`)
+    // Fetch user profile
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('full_name, email, created_at')
+      .eq('id', userId)
+      .single()
+
+    if (profileError) {
+      console.error('Error fetching profile:', profileError)
+      return NextResponse.json(
+        { error: 'Internal server error' },
+        { status: 500 }
+      )
+    }
 
     // Generate new access token
     const newAccessToken = await generateAccessToken({
       userId,
-      email: 'user@example.com', // TODO: Get from database
-      fullName: 'User' // TODO: Get from database
+      email: profile.email,
+      fullName: profile.full_name
     })
 
     // Generate new refresh token (token rotation for security)
@@ -67,9 +78,9 @@ export async function POST(request: NextRequest) {
       tokenType: 'Bearer',
       user: {
         id: userId,
-        email: 'user@example.com', // TODO: Get from database
-        fullName: 'User', // TODO: Get from database
-        memberSince: new Date().toISOString() // TODO: Get from database
+        email: profile.email,
+        fullName: profile.full_name,
+        memberSince: profile.created_at
       }
     })
 

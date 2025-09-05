@@ -36,6 +36,8 @@ export interface Task {
     author: string
     timestamp: Date
   }>
+  created_at?: string
+  updated_at?: string
 }
 
 interface TaskRowProps {
@@ -66,6 +68,8 @@ export default function TaskRow({
         return { color: 'text-orange-600', bg: 'bg-orange-100', label: 'Medium' }
       case 'low':
         return { color: 'text-green-600', bg: 'bg-green-100', label: 'Low' }
+      default:
+        return { color: 'text-orange-600', bg: 'bg-orange-100', label: 'Medium' }
     }
   }
 
@@ -77,6 +81,8 @@ export default function TaskRow({
         return { color: 'text-blue-600', bg: 'bg-blue-100', label: 'In Progress' }
       case 'done':
         return { color: 'text-green-600', bg: 'bg-green-100', label: 'Done' }
+      default:
+        return { color: 'text-gray-600', bg: 'bg-gray-100', label: 'Unknown' }
     }
   }
 

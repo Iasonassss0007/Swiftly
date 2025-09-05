@@ -1,8 +1,11 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { X, Calendar, Flag, Users, Tag, Plus, ChevronDown, Check, ChevronLeft, ChevronRight, Clock } from 'lucide-react'
-import Image from 'next/image'
+import { 
+  X, Calendar, Flag, Users, Tag, Plus, ChevronDown, Check, 
+  ChevronLeft, ChevronRight, Clock, Settings, Zap, FileText, 
+  UserPlus, Info, AlertCircle, ChevronUp, CheckCircle2 
+} from 'lucide-react'
 import { Task } from './TaskRow'
 
 interface NewTaskModalProps {
@@ -16,9 +19,16 @@ interface NewTaskModalProps {
     id: string
     name: string
     email: string
-    avatarUrl?: string
   }>
   availableTags: string[]
+}
+
+interface FormSection {
+  id: string
+  title: string
+  icon: React.ReactNode
+  completed: boolean
+  required: boolean
 }
 
 export default function NewTaskModal({
@@ -31,6 +41,8 @@ export default function NewTaskModal({
   availableUsers,
   availableTags
 }: NewTaskModalProps) {
+  
+  // Form state
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState<Task['priority']>('medium')
@@ -39,26 +51,129 @@ export default function NewTaskModal({
   const [assignees, setAssignees] = useState<Task['assignees']>([])
   const [tags, setTags] = useState<string[]>([])
   const [newTag, setNewTag] = useState('')
+  
+  // UI state
+  const [activeSection, setActiveSection] = useState('basic')
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['basic']))
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  
+  // Dropdown states
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false)
   const [priorityDropdownOpen, setPriorityDropdownOpen] = useState(false)
   const [tagsDropdownOpen, setTagsDropdownOpen] = useState(false)
+  const [assigneesDropdownOpen, setAssigneesDropdownOpen] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
+  
+  // Date/time states
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedTime, setSelectedTime] = useState('')
   const [timeDropdownOpen, setTimeDropdownOpen] = useState(false)
   const [selectedHour, setSelectedHour] = useState<number | null>(null)
   const [selectedMinute, setSelectedMinute] = useState<number | null>(null)
   
-  // Calendar state - must be at top level
+  // Calendar state
   const today = new Date()
   const [currentMonth, setCurrentMonth] = useState(today.getMonth())
   const [currentYear, setCurrentYear] = useState(today.getFullYear())
   
+  // Refs
   const statusDropdownRef = useRef<HTMLDivElement>(null)
   const priorityDropdownRef = useRef<HTMLDivElement>(null)
   const tagsDropdownRef = useRef<HTMLDivElement>(null)
+  const assigneesDropdownRef = useRef<HTMLDivElement>(null)
   const calendarRef = useRef<HTMLDivElement>(null)
   const timeDropdownRef = useRef<HTMLDivElement>(null)
+  const scrollableContainerRef = useRef<HTMLDivElement>(null)
+
+  // Form sections configuration
+  const formSections: FormSection[] = [
+    {
+      id: 'basic',
+      title: 'Basic Information',
+      icon: <FileText className="w-5 h-5" />,
+      completed: !!title.trim(),
+      required: true
+    },
+    {
+      id: 'details',
+      title: 'Details & Priority',
+      icon: <Settings className="w-5 h-5" />,
+      completed: !!title.trim() && !!priority,
+      required: true
+    },
+    {
+      id: 'assignment',
+      title: 'Assignment',
+      icon: <Users className="w-5 h-5" />,
+      completed: assignees.length > 0,
+      required: false
+    },
+    {
+      id: 'advanced',
+      title: 'Advanced Settings',
+      icon: <Zap className="w-5 h-5" />,
+      completed: tags.length > 0 || !!description.trim(),
+      required: false
+    }
+  ]
+
+  // Prevent background scrolling when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      const scrollY = window.scrollY
+      const scrollX = window.scrollX
+      
+      const originalBodyStyle = {
+        position: document.body.style.position,
+        top: document.body.style.top,
+        left: document.body.style.left,
+        width: document.body.style.width,
+        height: document.body.style.height,
+        overflow: document.body.style.overflow,
+        overflowX: document.body.style.overflowX,
+        overflowY: document.body.style.overflowY,
+        paddingRight: document.body.style.paddingRight
+      }
+      
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
+      
+      document.body.classList.add('modal-open')
+      document.body.style.position = 'fixed'
+      document.body.style.top = `-${scrollY}px`
+      document.body.style.left = `-${scrollX}px`
+      document.body.style.width = '100%'
+      document.body.style.height = '100%'
+      document.body.style.overflow = 'hidden'
+      document.body.style.overflowX = 'hidden'
+      document.body.style.overflowY = 'hidden'
+      
+      if (scrollbarWidth > 0) {
+        document.body.style.paddingRight = `${scrollbarWidth}px`
+      }
+      
+      const preventTouchMove = (e: TouchEvent) => {
+        e.preventDefault()
+      }
+      
+      document.addEventListener('touchmove', preventTouchMove, { passive: false })
+      
+      return () => {
+        document.body.classList.remove('modal-open')
+        document.body.style.position = originalBodyStyle.position
+        document.body.style.top = originalBodyStyle.top
+        document.body.style.left = originalBodyStyle.left
+        document.body.style.width = originalBodyStyle.width
+        document.body.style.height = originalBodyStyle.height
+        document.body.style.overflow = originalBodyStyle.overflow
+        document.body.style.overflowX = originalBodyStyle.overflowX
+        document.body.style.overflowY = originalBodyStyle.overflowY
+        document.body.style.paddingRight = originalBodyStyle.paddingRight
+        
+        window.scrollTo(scrollX, scrollY)
+        document.removeEventListener('touchmove', preventTouchMove)
+      }
+    }
+  }, [isOpen])
 
   // Handle clicks outside dropdowns
   useEffect(() => {
@@ -72,6 +187,9 @@ export default function NewTaskModal({
       if (tagsDropdownRef.current && !tagsDropdownRef.current.contains(event.target as Node)) {
         setTagsDropdownOpen(false)
       }
+      if (assigneesDropdownRef.current && !assigneesDropdownRef.current.contains(event.target as Node)) {
+        setAssigneesDropdownOpen(false)
+      }
       if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
         setCalendarOpen(false)
       }
@@ -81,119 +199,47 @@ export default function NewTaskModal({
     }
 
     document.addEventListener('mousedown', handleClickOutside)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const resetForm = useCallback(() => {
-    setTitle('')
-    setDescription('')
-    setPriority('medium')
-    setStatus(initialStatus)
-    setDueDate('')
-    setAssignees([])
-    setTags([])
-    setNewTag('')
-    setStatusDropdownOpen(false)
-    setPriorityDropdownOpen(false)
-    setTagsDropdownOpen(false)
-    setCalendarOpen(false)
-    setSelectedDate(null)
-    setSelectedTime('')
-    setTimeDropdownOpen(false)
-    setSelectedHour(null)
-    setSelectedMinute(null)
-  }, [initialStatus])
-
-  // Populate form when editing a task
+  // Initialize form with edit task data
   useEffect(() => {
-    if (isOpen && editTask) {
+    if (editTask) {
       setTitle(editTask.title)
       setDescription(editTask.description || '')
       setPriority(editTask.priority)
       setStatus(editTask.status)
+      setDueDate(editTask.dueDate ? editTask.dueDate.toISOString().split('T')[0] : '')
       setAssignees(editTask.assignees || [])
       setTags(editTask.tags || [])
-      
-      if (editTask.dueDate) {
-        setSelectedDate(editTask.dueDate)
-        setSelectedHour(editTask.dueDate.getHours())
-        setSelectedMinute(editTask.dueDate.getMinutes())
       } else {
-        setSelectedDate(null)
-        setSelectedHour(null)
-        setSelectedMinute(null)
-      }
-    } else if (isOpen && !editTask) {
-      // Reset form for new task
-      resetForm()
+      setTitle('')
+      setDescription('')
+      setPriority('medium')
+      setStatus(initialStatus)
+      setDueDate('')
+      setAssignees([])
+      setTags([])
+      setNewTag('')
     }
-  }, [isOpen, editTask, initialStatus, resetForm])
+  }, [editTask, initialStatus])
 
-  if (!isOpen) return null
-
-  const handleSave = () => {
-    if (!title.trim()) return
-
-    // Combine selected date and time
-    let finalDueDate: Date | null = null
-    if (selectedDate) {
-      finalDueDate = new Date(selectedDate)
-      if (selectedHour !== null && selectedMinute !== null) {
-        finalDueDate.setHours(selectedHour, selectedMinute, 0, 0)
-      } else if (selectedTime) {
-        const [hours, minutes] = selectedTime.split(':').map(Number)
-        finalDueDate.setHours(hours, minutes, 0, 0)
-      }
-    }
-
-    if (editTask && onUpdate) {
-      // Update existing task
-      const updatedTask: Task = {
-        ...editTask,
-        title: title.trim(),
-        description: description.trim() || undefined,
-        priority,
-        status,
-        dueDate: finalDueDate,
-        assignees,
-        tags: tags.length > 0 ? tags : undefined,
-        completed: status === 'done'
-      }
-      onUpdate(updatedTask)
+  // Helper functions
+  const toggleSection = (sectionId: string) => {
+    const newExpanded = new Set(expandedSections)
+    if (newExpanded.has(sectionId)) {
+      newExpanded.delete(sectionId)
     } else {
-      // Create new task
-      const newTask: Omit<Task, 'id'> = {
-        title: title.trim(),
-        description: description.trim() || undefined,
-        priority,
-        status,
-        dueDate: finalDueDate,
-        assignees,
-        tags: tags.length > 0 ? tags : undefined,
-        completed: status === 'done',
-        subtasks: [],
-        attachments: [],
-        comments: []
-      }
-      onSave(newTask)
+      newExpanded.add(sectionId)
     }
-    
-    resetForm()
-    onClose()
+    setExpandedSections(newExpanded)
+    setActiveSection(sectionId)
   }
 
-  const handleCancel = () => {
-    resetForm()
-    onClose()
-  }
+  const isSectionExpanded = (sectionId: string) => expandedSections.has(sectionId)
 
-  const addAssignee = (userId: string) => {
-    const user = availableUsers.find(u => u.id === userId)
-    if (user && !assignees.find(a => a.id === userId)) {
+  const addAssignee = (user: { id: string; name: string; email: string }) => {
       setAssignees([...assignees, user])
-    }
   }
 
   const removeAssignee = (userId: string) => {
@@ -201,7 +247,7 @@ export default function NewTaskModal({
   }
 
   const addTag = (tag: string) => {
-    if (tag && !tags.includes(tag)) {
+    if (!tags.includes(tag)) {
       setTags([...tags, tag])
     }
   }
@@ -217,20 +263,36 @@ export default function NewTaskModal({
     setTags(tags.filter(tag => tag !== tagToRemove))
   }
 
-  const getUserInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(word => word[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2)
+  const handleSave = () => {
+    if (!title.trim()) return
+
+    const taskData = {
+      title: title.trim(),
+      description: description.trim(),
+      priority,
+      status,
+      dueDate: dueDate ? new Date(dueDate) : null,
+      assignees,
+      tags,
+      completed: status === 'done',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+
+    if (editTask) {
+      onUpdate?.({ ...editTask, ...taskData })
+    } else {
+      onSave(taskData)
+    }
+    onClose()
+  }
+
+  const handleCancel = () => {
+    onClose()
   }
 
   // Calendar helper functions
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ]
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
   const getDaysInMonth = (month: number, year: number) => {
     return new Date(year, month + 1, 0).getDate()
@@ -250,85 +312,20 @@ export default function NewTaskModal({
     return isSameDay(date, today)
   }
 
-  const navigateMonth = (direction: 'prev' | 'next') => {
-    if (direction === 'prev') {
-      if (currentMonth === 0) {
-        setCurrentMonth(11)
-        setCurrentYear(currentYear - 1)
-      } else {
-        setCurrentMonth(currentMonth - 1)
-      }
-    } else {
-      if (currentMonth === 11) {
-        setCurrentMonth(0)
-        setCurrentYear(currentYear + 1)
-      } else {
-        setCurrentMonth(currentMonth + 1)
-      }
-    }
-  }
-
   const handleDateSelect = (date: Date) => {
     setSelectedDate(date)
-    setCalendarOpen(false)
-  }
-
-  const handleCalendarToggle = () => {
-    setCalendarOpen(!calendarOpen)
-    
-    // Scroll to calendar with smooth effect when opening - only if needed
-    if (!calendarOpen) {
-      setTimeout(() => {
-        if (calendarRef.current) {
-          // Get the modal content container
-          const modalContent = calendarRef.current.closest('.overflow-y-auto')
-          
-          if (modalContent) {
-            const calendarRect = calendarRef.current.getBoundingClientRect()
-            const modalRect = modalContent.getBoundingClientRect()
-            
-            // Calculate exact space needed for dropdown
-            const dropdownHeight = 450 // Calendar dropdown height + padding
-            const spaceBelow = modalRect.bottom - calendarRect.bottom
-            const spaceAbove = calendarRect.top - modalRect.top
-            
-            // Only scroll if the dropdown would actually be cut off
-            if (spaceBelow < dropdownHeight) {
-              // Check if we have enough space above to scroll up
-              if (spaceAbove > 100) {
-                // Scroll just enough to show the dropdown, not more
-                const scrollDistance = dropdownHeight - spaceBelow + 20 // 20px buffer
-                modalContent.scrollBy({
-                  top: scrollDistance,
-                  behavior: 'smooth'
-                })
-              }
-            }
-            // If there's enough space, don't scroll at all
-          }
-        }
-      }, 150) // Small delay to ensure dropdown is rendered
-    }
+    setDueDate(date.toISOString().split('T')[0])
   }
 
   const formatSelectedDate = () => {
-    if (!selectedDate) return 'Select due date...'
-    
-    const dateStr = selectedDate.toLocaleDateString('en-US', {
+    if (selectedDate) {
+      return selectedDate.toLocaleDateString('en-US', { 
       weekday: 'short',
       month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    })
-    
-    if (selectedHour !== null && selectedMinute !== null) {
-      const timeStr = `${selectedHour.toString().padStart(2, '0')}:${selectedMinute.toString().padStart(2, '0')}`
-      return `${dateStr} at ${timeStr}`
-    } else if (selectedTime) {
-      return `${dateStr} at ${selectedTime}`
+        day: 'numeric' 
+      })
     }
-    
-    return dateStr
+    return 'Select date...'
   }
 
   const formatTime = () => {
@@ -344,100 +341,156 @@ export default function NewTaskModal({
     setTimeDropdownOpen(false)
   }
 
+  if (!isOpen) return null
+
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[95vh] overflow-hidden">
+    <div className="fixed top-0 left-0 right-0 bottom-0 bg-black/60 flex items-center justify-center z-[9999] p-4 overflow-hidden" style={{ margin: 0, padding: '1rem', width: '100vw', height: '100vh' }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden">
+        
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[#ADB3BD]/30">
-          <h2 className="text-2xl font-semibold text-[#0F1626]">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-[#F8FAFC] to-white">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-[#111C59]/10 rounded-xl">
+              <FileText className="w-6 h-6 text-[#111C59]" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-[#0F1626]">
             {editTask ? 'Edit Task' : 'Create New Task'}
           </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                {editTask ? 'Update task details' : 'Set up your task with all necessary information'}
+              </p>
+            </div>
+          </div>
           <button
             onClick={handleCancel}
-            className="p-2 text-[#4F5F73] hover:text-[#0F1626] hover:bg-[#F8FAFC] rounded-lg transition-colors"
+            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Form */}
-        <div className="p-6 overflow-y-auto max-h-[calc(95vh-160px)]">
-          {/* Title */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-[#4F5F73] mb-2">
-              Task Title *
+        {/* Section Navigation */}
+        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+          <div className="flex items-center gap-2 overflow-x-auto">
+            {formSections.map((section, index) => (
+              <button
+                key={section.id}
+                onClick={() => toggleSection(section.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+                  isSectionExpanded(section.id)
+                    ? 'bg-[#111C59] text-white shadow-md'
+                    : section.completed
+                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                    : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                }`}
+              >
+                {section.completed ? (
+                  <CheckCircle2 className="w-4 h-4" />
+                ) : (
+                  section.icon
+                )}
+                {section.title}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Form Content */}
+        <div 
+          ref={scrollableContainerRef}
+          className="flex-1 overflow-y-auto scroll-smooth"
+        >
+          <div className="p-6 space-y-6">
+            
+            {/* Basic Information Section */}
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <button
+                onClick={() => toggleSection('basic')}
+                className="w-full px-6 py-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between hover:bg-gray-100 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <FileText className="w-5 h-5 text-[#111C59]" />
+                  <span className="font-semibold text-gray-900">Basic Information</span>
+                  {formSections[0].completed && (
+                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                  )}
+                </div>
+                {isSectionExpanded('basic') ? (
+                  <ChevronUp className="w-5 h-5 text-gray-500" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-gray-500" />
+                )}
+              </button>
+              
+              {isSectionExpanded('basic') && (
+                <div className="p-6 space-y-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Task Title
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter task title..."
-              className="w-full p-3 border border-[#ADB3BD]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#111C59]/20 focus:border-[#111C59] text-[#0F1626]"
+                      placeholder="What needs to be done?"
+                      className="w-full p-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#111C59]/20 focus:border-[#111C59] text-gray-900 text-lg font-medium transition-all"
               autoFocus
             />
+
           </div>
 
-          {/* Status and Priority */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>
-              <label className="block text-sm font-semibold text-[#0F1626] mb-3">Status</label>
-              <div className="relative" ref={statusDropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setStatusDropdownOpen(!statusDropdownOpen)}
-                  className="w-full p-3 border-2 border-[#ADB3BD]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#111C59]/20 focus:border-[#111C59] bg-white text-[#0F1626] font-medium flex items-center justify-between"
-                >
-                  <span className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${
-                      status === 'todo' ? 'bg-gray-400' :
-                      status === 'in_progress' ? 'bg-blue-500' :
-                      'bg-green-500'
-                    }`} />
-                    {status === 'todo' ? 'To Do' :
-                     status === 'in_progress' ? 'In Progress' :
-                     'Done'}
-                  </span>
-                  <ChevronDown className={`w-4 h-4 transition-transform ${statusDropdownOpen ? 'rotate-180' : ''}`} />
-                </button>
-                
-                {statusDropdownOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-[#ADB3BD]/30 rounded-lg shadow-lg z-10">
-                    {[
-                      { value: 'todo', label: 'To Do', color: 'bg-gray-400' },
-                      { value: 'in_progress', label: 'In Progress', color: 'bg-blue-500' },
-                      { value: 'done', label: 'Done', color: 'bg-green-500' }
-                    ].map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => {
-                          setStatus(option.value as Task['status'])
-                          setStatusDropdownOpen(false)
-                        }}
-                        className="w-full p-3 text-left hover:bg-[#F8FAFC] flex items-center justify-between transition-colors"
-                      >
-                        <span className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${option.color}`} />
-                          {option.label}
-                        </span>
-                        {status === option.value && <Check className="w-4 h-4 text-[#111C59]" />}
-                      </button>
-                    ))}
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Description
+                    </label>
+                    <textarea
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Add a detailed description for this task..."
+                      rows={4}
+                      className="w-full p-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#111C59]/20 focus:border-[#111C59] resize-none text-gray-900 transition-all"
+                    />
                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* Details & Priority Section */}
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                      <button
+                onClick={() => toggleSection('details')}
+                className="w-full px-6 py-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between hover:bg-gray-100 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Settings className="w-5 h-5 text-[#111C59]" />
+                  <span className="font-semibold text-gray-900">Details & Priority</span>
+                  {formSections[1].completed && (
+                    <CheckCircle2 className="w-4 h-4 text-green-500" />
                 )}
               </div>
-            </div>
-            
+                {isSectionExpanded('details') ? (
+                  <ChevronUp className="w-5 h-5 text-gray-500" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-gray-500" />
+                )}
+              </button>
+              
+              {isSectionExpanded('details') && (
+                <div className="p-6 space-y-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-semibold text-[#0F1626] mb-3">Priority</label>
+                      <label className="block text-sm font-semibold text-gray-900 mb-3">
+                        Priority Level
+                      </label>
               <div className="relative" ref={priorityDropdownRef}>
                 <button
                   type="button"
                   onClick={() => setPriorityDropdownOpen(!priorityDropdownOpen)}
-                  className="w-full p-3 border-2 border-[#ADB3BD]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#111C59]/20 focus:border-[#111C59] bg-white text-[#0F1626] font-medium flex items-center justify-between"
+                          className="w-full p-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#111C59]/20 focus:border-[#111C59] bg-white text-gray-900 font-medium flex items-center justify-between transition-all"
                 >
-                  <span className="flex items-center gap-2">
-                    <Flag className={`w-4 h-4 ${
+                          <span className="flex items-center gap-3">
+                            <Flag className={`w-5 h-5 ${
                       priority === 'low' ? 'text-green-500' :
                       priority === 'medium' ? 'text-orange-500' :
                       'text-red-500'
@@ -446,11 +499,11 @@ export default function NewTaskModal({
                      priority === 'medium' ? 'Medium Priority' :
                      'High Priority'}
                   </span>
-                  <ChevronDown className={`w-4 h-4 transition-transform ${priorityDropdownOpen ? 'rotate-180' : ''}`} />
+                          <ChevronDown className={`w-5 h-5 transition-transform ${priorityDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
                 
                 {priorityDropdownOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-[#ADB3BD]/30 rounded-lg shadow-lg z-10">
+                          <div className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg z-20">
                     {[
                       { value: 'low', label: 'Low Priority', color: 'text-green-500' },
                       { value: 'medium', label: 'Medium Priority', color: 'text-orange-500' },
@@ -463,303 +516,289 @@ export default function NewTaskModal({
                           setPriority(option.value as Task['priority'])
                           setPriorityDropdownOpen(false)
                         }}
-                        className="w-full p-3 text-left hover:bg-[#F8FAFC] flex items-center justify-between transition-colors"
+                                className="w-full p-4 text-left hover:bg-gray-50 flex items-center justify-between transition-colors"
                       >
-                        <span className="flex items-center gap-2">
-                          <Flag className={`w-4 h-4 ${option.color}`} />
+                                <span className="flex items-center gap-3">
+                                  <Flag className={`w-5 h-5 ${option.color}`} />
                           {option.label}
                         </span>
-                        {priority === option.value && <Check className="w-4 h-4 text-[#111C59]" />}
+                                {priority === option.value && <Check className="w-5 h-5 text-[#111C59]" />}
                       </button>
                     ))}
                   </div>
                 )}
-              </div>
             </div>
           </div>
 
-          {/* Due Date */}
-          <div className="mb-6">
-            <label className="block text-sm font-semibold text-[#0F1626] mb-3">Due Date</label>
-            <div className="space-y-3">
-              {/* Date Picker */}
-              <div className="relative" ref={calendarRef}>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-900 mb-3">
+                        Status
+                      </label>
+                      <div className="relative" ref={statusDropdownRef}>
                 <button
                   type="button"
-                  onClick={handleCalendarToggle}
-                  className="w-full pl-11 pr-4 py-3 border-2 border-[#ADB3BD]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#111C59]/20 focus:border-[#111C59] bg-white text-[#0F1626] font-medium flex items-center justify-between"
-                >
-                  <span className="flex items-center">
-                    <Calendar className="absolute left-3 w-5 h-5 text-[#111C59]" />
-                    {formatSelectedDate()}
+                          onClick={() => setStatusDropdownOpen(!statusDropdownOpen)}
+                          className="w-full p-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#111C59]/20 focus:border-[#111C59] bg-white text-gray-900 font-medium flex items-center justify-between transition-all"
+                        >
+                          <span className="flex items-center gap-3">
+                            <div className={`w-3 h-3 rounded-full ${
+                              status === 'todo' ? 'bg-gray-400' :
+                              status === 'in_progress' ? 'bg-blue-500' :
+                              'bg-green-500'
+                            }`} />
+                            {status === 'todo' ? 'To Do' :
+                             status === 'in_progress' ? 'In Progress' :
+                             'Done'}
                   </span>
-                  <ChevronDown className={`w-4 h-4 transition-transform ${calendarOpen ? 'rotate-180' : ''}`} />
+                          <ChevronDown className={`w-5 h-5 transition-transform ${statusDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
 
-                {calendarOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-[#ADB3BD]/30 rounded-lg shadow-lg z-30 p-4">
-                    {/* Calendar Header */}
-                    <div className="flex items-center justify-between mb-4">
+                        {statusDropdownOpen && (
+                          <div className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg z-20">
+                            {[
+                              { value: 'todo', label: 'To Do', color: 'bg-gray-400' },
+                              { value: 'in_progress', label: 'In Progress', color: 'bg-blue-500' },
+                              { value: 'done', label: 'Done', color: 'bg-green-500' }
+                            ].map((option) => (
                       <button
+                                key={option.value}
                         type="button"
-                        onClick={() => navigateMonth('prev')}
-                        className="p-1 hover:bg-[#F8FAFC] rounded transition-colors"
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                      </button>
-                      <span className="font-semibold text-[#0F1626]">
-                        {monthNames[currentMonth]} {currentYear}
+                                onClick={() => {
+                                  setStatus(option.value as Task['status'])
+                                  setStatusDropdownOpen(false)
+                                }}
+                                className="w-full p-4 text-left hover:bg-gray-50 flex items-center justify-between transition-colors"
+                              >
+                                <span className="flex items-center gap-3">
+                                  <div className={`w-3 h-3 rounded-full ${option.color}`} />
+                                  {option.label}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => navigateMonth('next')}
-                        className="p-1 hover:bg-[#F8FAFC] rounded transition-colors"
-                      >
-                        <ChevronRight className="w-4 h-4" />
+                                {status === option.value && <Check className="w-5 h-5 text-[#111C59]" />}
                       </button>
+                            ))}
                     </div>
-
-                    {/* Calendar Grid */}
-                    <div className="grid grid-cols-7 gap-1 mb-2">
-                      {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
-                        <div key={day} className="text-center text-xs font-medium text-[#4F5F73] p-2">
-                          {day}
+                        )}
                         </div>
-                      ))}
                     </div>
-
-                    <div className="grid grid-cols-7 gap-1">
-                      {/* Previous month days */}
-                      {Array.from({ length: getFirstDayOfMonth(currentMonth, currentYear) }, (_, i) => {
-                        const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1
-                        const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear
-                        const day = getDaysInMonth(prevMonth, prevYear) - getFirstDayOfMonth(currentMonth, currentYear) + i + 1
-                        return (
-                          <div key={`prev-${i}`} className="p-2 text-center text-[#4F5F73]/50 text-sm">
-                            {day}
                           </div>
-                        )
-                      })}
 
-                      {/* Current month days */}
-                      {Array.from({ length: getDaysInMonth(currentMonth, currentYear) }, (_, i) => {
-                        const day = i + 1
-                        const date = new Date(currentYear, currentMonth, day)
-                        const isSelected = selectedDate && isSameDay(date, selectedDate)
-                        const isTodayDate = isToday(date)
-
-                        return (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-3">
+                      Due Date
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           <button
-                            key={day}
-                            type="button"
-                            onClick={() => handleDateSelect(date)}
-                            className={`p-2 text-sm rounded transition-colors ${
-                              isSelected
-                                ? 'bg-[#111C59] text-white'
-                                : isTodayDate
-                                ? 'bg-[#111C59]/10 text-[#111C59] font-semibold'
-                                : 'hover:bg-[#F8FAFC] text-[#0F1626]'
-                            }`}
-                          >
-                            {day}
-                          </button>
-                        )
-                      })}
-
-                      {/* Next month days */}
-                      {Array.from({ length: 42 - getDaysInMonth(currentMonth, currentYear) - getFirstDayOfMonth(currentMonth, currentYear) }, (_, i) => {
-                        const day = i + 1
-                        return (
-                          <div key={`next-${i}`} className="p-2 text-center text-[#4F5F73]/50 text-sm">
-                            {day}
-                          </div>
-                        )
-                      })}
-                    </div>
-
-                    {/* Quick date options */}
-                    <div className="flex gap-2 mt-4 pt-4 border-t border-[#ADB3BD]/30">
-                      <button
-                        type="button"
-                        onClick={() => handleDateSelect(today)}
-                        className="px-3 py-1 text-xs bg-[#F8FAFC] text-[#111C59] rounded hover:bg-[#111C59]/10 transition-colors"
+                        onClick={() => setSelectedDate(today)}
+                        className={`px-4 py-3 text-sm rounded-lg transition-all flex items-center justify-center gap-2 ${
+                          selectedDate && isSameDay(selectedDate, today)
+                            ? 'bg-[#111C59] text-white shadow-md'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+                        }`}
                       >
+                        <Calendar className="w-4 h-4" />
                         Today
                       </button>
                       <button
-                        type="button"
-                        onClick={() => handleDateSelect(new Date(today.getTime() + 24 * 60 * 60 * 1000))}
-                        className="px-3 py-1 text-xs bg-[#F8FAFC] text-[#111C59] rounded hover:bg-[#111C59]/10 transition-colors"
+                        onClick={() => setSelectedDate(new Date(today.getTime() + 24 * 60 * 60 * 1000))}
+                        className={`px-4 py-3 text-sm rounded-lg transition-all flex items-center justify-center gap-2 ${
+                          selectedDate && isSameDay(selectedDate, new Date(today.getTime() + 24 * 60 * 60 * 1000))
+                            ? 'bg-[#111C59] text-white shadow-md'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+                        }`}
                       >
+                        <Calendar className="w-4 h-4" />
                         Tomorrow
                       </button>
                       <button
-                        type="button"
-                        onClick={() => handleDateSelect(new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000))}
-                        className="px-3 py-1 text-xs bg-[#F8FAFC] text-[#111C59] rounded hover:bg-[#111C59]/10 transition-colors"
+                        onClick={() => setSelectedDate(new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000))}
+                        className={`px-4 py-3 text-sm rounded-lg transition-all flex items-center justify-center gap-2 ${
+                          selectedDate && isSameDay(selectedDate, new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000))
+                            ? 'bg-[#111C59] text-white shadow-md'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+                        }`}
                       >
+                        <Calendar className="w-4 h-4" />
                         Next Week
                       </button>
+                    </div>
+                    {selectedDate && (
+                      <div className="mt-4 p-3 bg-[#111C59]/10 rounded-lg border border-[#111C59]/20">
+                        <p className="text-sm text-[#111C59] font-medium">
+                          Due: {selectedDate.toLocaleDateString('en-US', { 
+                            weekday: 'long', 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                          })}
+                        </p>
+                      </div>
+                    )}
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Time Picker */}
-              {selectedDate && (
-                <div className="relative" ref={timeDropdownRef}>
+            {/* Assignment Section */}
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
                   <button
-                    type="button"
-                    onClick={() => setTimeDropdownOpen(!timeDropdownOpen)}
-                    className="w-full pl-11 pr-4 py-3 border-2 border-[#ADB3BD]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#111C59]/20 focus:border-[#111C59] bg-white text-[#0F1626] font-medium flex items-center justify-between"
-                  >
-                    <span className="flex items-center">
-                      <Clock className="absolute left-3 w-5 h-5 text-[#111C59]" />
-                      {formatTime()}
-                    </span>
-                    <ChevronDown className={`w-4 h-4 transition-transform ${timeDropdownOpen ? 'rotate-180' : ''}`} />
+                onClick={() => toggleSection('assignment')}
+                className="w-full px-6 py-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between hover:bg-gray-100 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Users className="w-5 h-5 text-[#111C59]" />
+                  <span className="font-semibold text-gray-900">Assignment</span>
+                  {formSections[2].completed && (
+                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                  )}
+                </div>
+                {isSectionExpanded('assignment') ? (
+                  <ChevronUp className="w-5 h-5 text-gray-500" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-gray-500" />
+                )}
                   </button>
 
-                  {timeDropdownOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-[#ADB3BD]/30 rounded-lg shadow-lg z-40 p-4">
-                      <div className="flex gap-4">
-                        {/* Hours */}
-                        <div className="flex-1">
-                          <label className="block text-xs font-medium text-[#4F5F73] mb-2">Hour</label>
-                          <div className="max-h-40 overflow-y-auto border border-[#ADB3BD]/30 rounded">
-                            {Array.from({ length: 24 }, (_, i) => (
+              {isSectionExpanded('assignment') && (
+                <div className="p-6 space-y-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-3">
+                      Assignees
+                    </label>
+                    
+                    {assignees.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {assignees.map((assignee) => (
+                          <div
+                            key={assignee.id}
+                            className="flex items-center gap-2 bg-[#111C59]/10 text-[#111C59] rounded-full px-3 py-2 text-sm font-medium border border-[#111C59]/20"
+                          >
+                            <Users className="w-4 h-4" />
+                            {assignee.name}
                               <button
-                                key={i}
-                                type="button"
-                                onClick={() => {
-                                  const minute = selectedMinute !== null ? selectedMinute : 0
-                                  handleTimeSelect(i, minute)
-                                }}
-                                className={`w-full p-2 text-left text-sm hover:bg-[#F8FAFC] transition-colors ${
-                                  selectedHour === i ? 'bg-[#111C59] text-white' : 'text-[#0F1626]'
-                                }`}
-                              >
-                                {i.toString().padStart(2, '0')}:00
+                              onClick={() => removeAssignee(assignee.id)}
+                              className="text-[#111C59] hover:text-red-600 transition-colors ml-1"
+                            >
+                              <X className="w-4 h-4" />
                               </button>
+                          </div>
                             ))}
                           </div>
-                        </div>
+                    )}
 
-                        {/* Minutes */}
-                        <div className="flex-1">
-                          <label className="block text-xs font-medium text-[#4F5F73] mb-2">Minute</label>
-                          <div className="max-h-40 overflow-y-auto border border-[#ADB3BD]/30 rounded">
-                            {Array.from({ length: 12 }, (_, i) => {
-                              const minute = i * 5
-                              return (
+                    <div className="relative" ref={assigneesDropdownRef}>
                                 <button
-                                  key={minute}
                                   type="button"
-                                  onClick={() => {
-                                    const hour = selectedHour !== null ? selectedHour : 9
-                                    handleTimeSelect(hour, minute)
-                                  }}
-                                  className={`w-full p-2 text-left text-sm hover:bg-[#F8FAFC] transition-colors ${
-                                    selectedMinute === minute ? 'bg-[#111C59] text-white' : 'text-[#0F1626]'
-                                  }`}
-                                >
-                                  :{minute.toString().padStart(2, '0')}
+                        onClick={() => setAssigneesDropdownOpen(!assigneesDropdownOpen)}
+                        className="w-full p-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#111C59]/20 focus:border-[#111C59] bg-white text-gray-900 font-medium flex items-center justify-between transition-all"
+                      >
+                        <span className="flex items-center gap-3">
+                          <UserPlus className="w-5 h-5 text-[#111C59]" />
+                          Select team members...
+                        </span>
+                        <ChevronDown className={`w-5 h-5 transition-transform ${assigneesDropdownOpen ? 'rotate-180' : ''}`} />
                                 </button>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Quick time options */}
-                      <div className="flex gap-2 mt-4 pt-4 border-t border-[#ADB3BD]/30">
+                      
+                      {assigneesDropdownOpen && (
+                        <div className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg z-20 max-h-48 overflow-y-auto">
+                          {availableUsers
+                            .filter(user => !assignees.some(a => a.id === user.id))
+                            .map(user => (
                         <button
-                          type="button"
-                          onClick={() => handleTimeSelect(9, 0)}
-                          className="px-3 py-1 text-xs bg-[#F8FAFC] text-[#111C59] rounded hover:bg-[#111C59]/10 transition-colors"
-                        >
-                          9:00 AM
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleTimeSelect(12, 0)}
-                          className="px-3 py-1 text-xs bg-[#F8FAFC] text-[#111C59] rounded hover:bg-[#111C59]/10 transition-colors"
-                        >
-                          12:00 PM
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleTimeSelect(17, 0)}
-                          className="px-3 py-1 text-xs bg-[#F8FAFC] text-[#111C59] rounded hover:bg-[#111C59]/10 transition-colors"
-                        >
-                          5:00 PM
-                        </button>
-                        <button
+                                key={user.id}
                           type="button"
                           onClick={() => {
-                            setSelectedHour(null)
-                            setSelectedMinute(null)
-                            setTimeDropdownOpen(false)
-                          }}
-                          className="px-3 py-1 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors"
-                        >
-                          Clear
+                                  addAssignee(user)
+                                  setAssigneesDropdownOpen(false)
+                                }}
+                                className="w-full p-4 text-left hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                              >
+                                <div className="w-10 h-10 bg-gradient-to-r from-[#111C59] to-[#4F5F73] rounded-full flex items-center justify-center">
+                                  <span className="text-white font-medium text-sm">
+                                    {user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                                  </span>
+                                </div>
+                                <div>
+                                  <div className="font-medium text-gray-900">{user.name}</div>
+                                  <div className="text-sm text-gray-500">{user.email}</div>
+                                </div>
                         </button>
+                            ))}
+                          {availableUsers.filter(user => !assignees.some(a => a.id === user.id)).length === 0 && (
+                            <div className="p-4 text-gray-500 text-center">
+                              All team members are already assigned
                       </div>
+                          )}
                     </div>
                   )}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
+
+            {/* Advanced Settings Section */}
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <button
+                onClick={() => toggleSection('advanced')}
+                className="w-full px-6 py-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between hover:bg-gray-100 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Zap className="w-5 h-5 text-[#111C59]" />
+                  <span className="font-semibold text-gray-900">Advanced Settings</span>
+                  {formSections[3].completed && (
+                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                  )}
           </div>
-
-
-
-          {/* Tags */}
-          <div className="mb-6">
-            <label className="block text-sm font-semibold text-[#0F1626] mb-3">Tags</label>
-            
-            {/* Selected Tags */}
+                {isSectionExpanded('advanced') ? (
+                  <ChevronUp className="w-5 h-5 text-gray-500" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-gray-500" />
+                )}
+              </button>
+              
+              {isSectionExpanded('advanced') && (
+                <div className="p-6 space-y-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-3">
+                      Tags
+                    </label>
+                    
             {tags.length > 0 && (
-              <div className="bg-[#F8FAFC] border border-[#ADB3BD]/30 rounded-lg p-4 mb-4">
-                <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2 mb-4">
                   {tags.map((tag) => (
                     <div
                       key={tag}
                       className="flex items-center gap-2 bg-[#111C59]/10 text-[#111C59] rounded-full px-3 py-2 text-sm font-medium border border-[#111C59]/20"
                     >
-                      <Tag className="w-3 h-3" />
+                            <Tag className="w-4 h-4" />
                       {tag}
                       <button
                         onClick={() => removeTag(tag)}
                         className="text-[#111C59] hover:text-red-600 transition-colors ml-1"
                       >
-                        <X className="w-3 h-3" />
+                              <X className="w-4 h-4" />
                       </button>
                     </div>
                   ))}
-                </div>
               </div>
             )}
 
-            {/* Add Tag Controls */}
-            <div className="space-y-3">
-              {/* Existing Tags Dropdown */}
+                    <div className="space-y-4">
               <div className="relative" ref={tagsDropdownRef}>
                 <button
                   type="button"
                   onClick={() => setTagsDropdownOpen(!tagsDropdownOpen)}
-                  className="w-full pl-11 pr-4 py-3 border-2 border-[#ADB3BD]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#111C59]/20 focus:border-[#111C59] bg-white text-[#0F1626] font-medium flex items-center justify-between"
-                >
-                  <span className="flex items-center">
-                    <Tag className="absolute left-3 w-5 h-5 text-[#111C59]" />
-                    Select existing tag...
+                          className="w-full p-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#111C59]/20 focus:border-[#111C59] bg-white text-gray-900 font-medium flex items-center justify-between transition-all"
+                        >
+                          <span className="flex items-center gap-3">
+                            <Tag className="w-5 h-5 text-[#111C59]" />
+                            Select existing tags...
                   </span>
-                  <ChevronDown className={`w-4 h-4 transition-transform ${tagsDropdownOpen ? 'rotate-180' : ''}`} />
+                          <ChevronDown className={`w-5 h-5 transition-transform ${tagsDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
                 
                 {tagsDropdownOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-[#ADB3BD]/30 rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
+                          <div className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg z-20 max-h-48 overflow-y-auto">
                     {availableTags
                       .filter(tag => !tags.includes(tag))
                       .map(tag => (
@@ -770,16 +809,14 @@ export default function NewTaskModal({
                             addTag(tag)
                             setTagsDropdownOpen(false)
                           }}
-                          className="w-full p-3 text-left hover:bg-[#F8FAFC] flex items-center justify-between transition-colors"
+                                  className="w-full p-4 text-left hover:bg-gray-50 flex items-center gap-3 transition-colors"
                         >
-                          <span className="flex items-center gap-2">
                             <Tag className="w-4 h-4 text-[#111C59]" />
                             {tag}
-                          </span>
                         </button>
                       ))}
                     {availableTags.filter(tag => !tags.includes(tag)).length === 0 && (
-                      <div className="p-3 text-[#4F5F73] text-center">
+                              <div className="p-4 text-gray-500 text-center">
                         No available tags
                       </div>
                     )}
@@ -787,7 +824,6 @@ export default function NewTaskModal({
                 )}
               </div>
 
-              {/* New Tag Input */}
               <div className="flex gap-3">
                 <input
                   type="text"
@@ -795,47 +831,83 @@ export default function NewTaskModal({
                   onChange={(e) => setNewTag(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && addNewTag()}
                   placeholder="Create new tag..."
-                  className="flex-1 p-3 border-2 border-[#ADB3BD]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#111C59]/20 focus:border-[#111C59] bg-white text-[#0F1626] font-medium"
+                          className="flex-1 p-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#111C59]/20 focus:border-[#111C59] bg-white text-gray-900 font-medium transition-all"
                 />
                 <button
                   onClick={addNewTag}
                   disabled={!newTag.trim()}
-                  className="px-4 py-3 bg-[#111C59] text-white rounded-lg hover:bg-[#0F1626] transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-sm"
+                          className="px-6 py-4 bg-[#111C59] text-white rounded-xl hover:bg-[#0F1626] transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg hover:shadow-xl flex items-center gap-2"
                 >
                   <Plus className="w-5 h-5" />
+                          Add
                 </button>
               </div>
             </div>
           </div>
-
-          {/* Description */}
-          <div className="mb-6">
-            <label className="block text-sm font-semibold text-[#0F1626] mb-3">Description</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Add a detailed description for this task..."
-              rows={5}
-              className="w-full p-4 border-2 border-[#ADB3BD]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#111C59]/20 focus:border-[#111C59] resize-none bg-white text-[#0F1626] font-medium"
-            />
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 flex items-center justify-end gap-4 p-6 border-t border-[#ADB3BD]/30 bg-white shadow-lg">
+        <div className="sticky bottom-0 bg-white border-t border-gray-200 shadow-lg">
+          {/* Task Summary */}
+          {title.trim() && (
+            <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+              <div className="flex items-center gap-2 mb-2">
+                <FileText className="w-4 h-4 text-[#111C59]" />
+                <span className="text-sm font-semibold text-gray-700">Task Summary</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-[#111C59]"></div>
+                  <span className="text-gray-900 font-medium">{title}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Flag className={`w-4 h-4 ${
+                    priority === 'low' ? 'text-green-500' :
+                    priority === 'medium' ? 'text-orange-500' :
+                    'text-red-500'
+                  }`} />
+                  <span className="text-gray-600">{priority} priority</span>
+                </div>
+                {selectedDate && (
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-[#111C59]" />
+                    <span className="text-gray-600">Due {selectedDate.toLocaleDateString()}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex items-center justify-between gap-4 p-6">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Info className="w-4 h-4" />
+              <span>
+                {formSections.filter(s => s.completed).length} of {formSections.length} sections completed
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-3">
           <button
             onClick={handleCancel}
-            className="px-6 py-3 text-[#4F5F73] hover:text-[#0F1626] hover:bg-white rounded-lg transition-colors font-medium border border-[#ADB3BD]/30"
+                className="px-6 py-3 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors font-medium border border-gray-200"
           >
             Cancel
           </button>
+              
           <button
             onClick={handleSave}
             disabled={!title.trim()}
-            className="px-8 py-3 bg-[#111C59] text-white rounded-lg font-semibold hover:bg-[#0F1626] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                className="px-8 py-3 bg-[#111C59] text-white rounded-xl font-semibold hover:bg-[#0F1626] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
           >
             {editTask ? 'Update Task' : 'Create Task'}
           </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

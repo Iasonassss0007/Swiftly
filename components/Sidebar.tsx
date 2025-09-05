@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 
-import type { Profile } from '@/lib/supabaseClient'
+import type { Profile } from '@/lib/supabaseAdmin'
 import {
   Home,
   ListChecks,
@@ -17,6 +17,7 @@ import {
   User,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   Settings,
   LogOut
 } from './icons'
@@ -36,6 +37,7 @@ interface SidebarProps {
 
 export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }: SidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const [openAccordions, setOpenAccordions] = useState<Set<string>>(new Set())
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
   const profileDropdownRef = useRef<HTMLDivElement>(null)
@@ -137,51 +139,121 @@ export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }
 
   return (
     <motion.aside
-      initial={false}
-      animate={{ width: collapsed ? 64 : 240 }}
-      transition={{ duration: 0.2, ease: 'easeInOut' }}
+      initial={{ width: collapsed ? 64 : 220 }}
+      animate={{ width: collapsed ? 64 : 220 }}
+      transition={{ 
+        type: "spring",
+        damping: 30,
+        stiffness: 300,
+        mass: 0.8,
+        duration: 0.6
+      }}
       className="bg-white/95 backdrop-blur-sm border-r border-[#ADB3BD]/30 flex flex-col h-full shadow-lg"
     >
       {/* Logo Area */}
-      <div className="h-16 flex items-center justify-center border-b border-[#ADB3BD]/30">
-        {!collapsed && (
-          <Link href="/dashboard" className="text-xl font-bold bg-gradient-to-r from-[#111C59] to-[#4F5F73] bg-clip-text text-transparent">
-            Swiftly
-          </Link>
-        )}
+      <div className={`h-16 flex items-center border-b border-[#ADB3BD]/30 relative ${collapsed ? 'group justify-center' : 'justify-between'}`}>
+        {/* Logo - Normal state when expanded, disappears on hover when collapsed */}
+        <AnimatePresence mode="wait">
+          {!collapsed && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ 
+                opacity: 0,
+                transition: { duration: 0, delay: 0 }
+              }}
+              transition={{ 
+                duration: 0.3,
+                ease: "easeOut",
+                delay: 0.2
+              }}
+              className="flex items-center justify-between w-full px-4"
+            >
+              <Link 
+                href="/dashboard" 
+                className="text-xl font-bold bg-gradient-to-r from-[#111C59] to-[#4F5F73] bg-clip-text text-transparent"
+              >
+                Swiftly
+              </Link>
+              {/* Toggle Button for Expanded State - Always visible in corner */}
+              <button
+                onClick={onToggleCollapsed}
+                className="p-1.5 rounded-md text-[#4F5F73] hover:text-[#111C59] hover:bg-[#111C59]/5 transition-all duration-200 flex-shrink-0"
+                aria-label="Collapse sidebar"
+              >
+                <ChevronLeft className="w-4 h-4 transition-transform duration-200" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
         {collapsed && (
-          <div className="w-8 h-8 bg-gradient-to-r from-[#111C59] to-[#4F5F73] rounded-lg flex items-center justify-center shadow-lg">
-            <span className="text-white font-bold text-sm">S</span>
-          </div>
+          <>
+            {/* Logo S - Disappears on Hover in Collapsed State */}
+            <div className="w-8 h-8 bg-gradient-to-r from-[#111C59] to-[#4F5F73] rounded-lg flex items-center justify-center shadow-lg transition-opacity duration-200 group-hover:opacity-0">
+              <span className="text-white font-bold text-sm">S</span>
+            </div>
+            
+            {/* Toggle Button for Collapsed State - Appears on Hover */}
+            <button
+              onClick={onToggleCollapsed}
+              className="absolute inset-0 flex items-center justify-center p-1.5 rounded-md text-[#4F5F73] hover:text-[#111C59] hover:bg-[#111C59]/5 transition-all duration-200 opacity-0 group-hover:opacity-100"
+              aria-label="Expand sidebar"
+            >
+              <ChevronLeft className="w-4 h-4 transition-transform duration-200 rotate-180" />
+            </button>
+          </>
         )}
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 px-2 py-6 space-y-3">
-        {navigationItems.map((item) => (
+        {navigationItems.map((item, index) => (
           <div key={item.id}>
             {item.subItems ? (
               <div>
                 <button
                   onClick={() => toggleAccordion(item.id)}
-                  className={`w-full flex items-center justify-between pl-2 pr-4 py-3 rounded-md text-sm font-medium transition-colors duration-200 ${
+                  className={`w-full flex items-center ${collapsed ? 'justify-center px-2 py-3' : 'justify-between pl-2 pr-4 py-3'} rounded-md text-sm font-medium transition-all duration-300 ease-in-out ${
                     isActive(item.href)
                       ? 'bg-[#111C59]/10 text-[#111C59] border border-[#111C59]/20'
                       : 'text-[#0F1626] hover:bg-[#111C59]/5 hover:text-[#111C59]'
                   }`}
                   aria-expanded={openAccordions.has(item.id)}
                   aria-controls={`submenu-${item.id}`}
+                  title={collapsed ? item.label : undefined}
                 >
-                  <div className="flex items-center space-x-3">
+                  {collapsed ? (
                     <span className="flex-shrink-0">{item.icon}</span>
-                    {!collapsed && <span>{item.label}</span>}
-                  </div>
-                  {!collapsed && (
-                    <ChevronRight
-                      className={`w-4 h-4 transition-transform duration-200 ${
-                        openAccordions.has(item.id) ? 'rotate-90' : ''
-                      }`}
-                    />
+                  ) : (
+                    <>
+                      <div className="flex items-center space-x-3">
+                        <span className="flex-shrink-0">{item.icon}</span>
+                        <AnimatePresence>
+                          {!collapsed && (
+                            <motion.span
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{
+                                opacity: 0,
+                                transition: { duration: 0, delay: 0 }
+                              }}
+                              transition={{ 
+                                duration: 0.3,
+                                ease: "easeOut",
+                                delay: 0.2
+                              }}
+                            >
+                              {item.label}
+                            </motion.span>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                      <ChevronRight
+                        className={`w-4 h-4 transition-transform duration-200 ${
+                          openAccordions.has(item.id) ? 'rotate-90' : ''
+                        }`}
+                      />
+                    </>
                   )}
                 </button>
                 
@@ -199,7 +271,7 @@ export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }
                         <Link
                           key={subItem.id}
                           href={subItem.href}
-                          className={`block pl-2 pr-4 py-2 rounded-md text-sm transition-colors duration-200 ${
+                          className={`block pl-2 pr-4 py-2 rounded-md text-sm ${
                             isActive(subItem.href)
                               ? 'bg-[#111C59]/10 text-[#111C59] border border-[#111C59]/20'
                               : 'text-[#4F5F73] hover:bg-[#111C59]/5 hover:text-[#111C59]'
@@ -219,16 +291,36 @@ export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }
             ) : (
               <Link
                 href={item.href}
-                className={`flex items-center pl-2 pr-4 py-3 rounded-md text-sm font-medium transition-colors duration-200 ${
+                className={`flex items-center ${collapsed ? 'justify-center px-2 py-3' : 'pl-2 pr-4 py-3'} rounded-md text-sm font-medium transition-all duration-300 ease-in-out ${
                   isActive(item.href)
                     ? 'bg-[#111C59]/10 text-[#111C59] border border-[#111C59]/20'
                     : 'text-[#0F1626] hover:bg-[#111C59]/5 hover:text-[#111C59]'
                 }`}
                 aria-label={item.label}
                 aria-current={isActive(item.href) ? 'page' : undefined}
+                title={collapsed ? item.label : undefined}
               >
                 <span className="flex-shrink-0">{item.icon}</span>
-                {!collapsed && <span className="ml-3">{item.label}</span>}
+                <AnimatePresence>
+                  {!collapsed && (
+                    <motion.span
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ 
+                        opacity: 0,
+                        transition: { duration: 0, delay: 0 }
+                      }}
+                      transition={{ 
+                        duration: 0.3,
+                        ease: "easeOut",
+                        delay: 0.2
+                      }}
+                      className="ml-3"
+                    >
+                      {item.label}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
               </Link>
             )}
           </div>
@@ -240,9 +332,10 @@ export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }
         <div className="relative" ref={profileDropdownRef}>
           <button
             onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-            className="w-full flex items-center space-x-3 pl-2 pr-4 py-3 rounded-md text-sm font-medium text-[#0F1626] hover:bg-[#111C59]/5 hover:text-[#111C59] transition-colors duration-200"
+            className={`w-full flex items-center ${collapsed ? 'justify-center px-2 py-3' : 'space-x-3 pl-2 pr-4 py-3'} rounded-md text-sm font-medium text-[#0F1626] hover:bg-[#111C59]/5 hover:text-[#111C59]`}
             aria-expanded={profileDropdownOpen}
             aria-haspopup="true"
+            title={collapsed ? userFullName : undefined}
           >
             <span className="flex-shrink-0">
               {user.avatarUrl ? (
@@ -261,19 +354,34 @@ export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }
                 </div>
               )}
             </span>
-            {!collapsed && (
-              <>
-                <div className="flex-1 text-left min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
-                    {userFullName}
-                  </p>
-                  <p className="text-xs text-gray-500 truncate" title={userEmail}>
-                    {userEmail}
-                  </p>
-                </div>
-                <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
-              </>
-            )}
+            <AnimatePresence>
+              {!collapsed && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ 
+                    opacity: 0,
+                    transition: { duration: 0, delay: 0 }
+                  }}
+                  transition={{ 
+                    duration: 0.3,
+                    ease: "easeOut",
+                    delay: 0.2
+                  }}
+                  className="flex-1 text-left min-w-0 flex items-center"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {userFullName}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate" title={userEmail}>
+                      {userEmail}
+                    </p>
+                  </div>
+                  <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0 ml-2" />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </button>
 
           <AnimatePresence>
@@ -288,10 +396,10 @@ export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }
                 <div className="py-1">
                   <button
                     onClick={() => {
-                      // TODO: Navigate to settings page
+                      router.push('/dashboard/settings')
                       setProfileDropdownOpen(false)
                     }}
-                    className="w-full flex items-center px-4 py-2 text-sm text-[#0F1626] hover:bg-[#111C59]/5 transition-colors duration-200"
+                    className="w-full flex items-center px-4 py-2 text-sm text-[#0F1626] hover:bg-[#111C59]/5"
                   >
                     <Settings className="w-4 h-4 mr-3 text-[#4F5F73]" />
                     Settings
@@ -301,7 +409,7 @@ export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }
                       handleLogout()
                       setProfileDropdownOpen(false)
                     }}
-                    className="w-full flex items-center px-4 py-2 text-sm text-[#0F1626] hover:bg-[#111C59]/5 transition-colors duration-200"
+                    className="w-full flex items-center px-4 py-2 text-sm text-[#0F1626] hover:bg-[#111C59]/5"
                   >
                     <LogOut className="w-4 h-4 mr-3 text-gray-400" />
                     Logout

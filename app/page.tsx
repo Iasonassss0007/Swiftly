@@ -421,7 +421,7 @@ export default function Home() {
               }
             ].map((feature, index) => (
               <motion.div
-                key={index}
+                key={feature.title}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
@@ -466,7 +466,7 @@ export default function Home() {
             {[
               {
                 name: 'Starter Plan',
-                price: '$11.99',
+                price: '$12',
                 period: '/month',
                 description: 'Access to fundamental task management features.',
                 features: [
@@ -480,7 +480,7 @@ export default function Home() {
               },
               {
                 name: 'Pro Plan',
-                price: '$29.99',
+                price: '$25',
                 period: '/month',
                 description: 'Unlimited tasks and project management capabilities.',
                 features: [
@@ -510,7 +510,7 @@ export default function Home() {
               }
             ].map((plan, index) => (
               <motion.div
-                key={index}
+                key={plan.name}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
@@ -548,7 +548,7 @@ export default function Home() {
                 
                 <ul className="space-y-3 mb-8 flex-grow">
                   {plan.features.map((feature, featureIndex) => (
-                    <li key={featureIndex} className="flex items-start text-[#0F1626]">
+                    <li key={feature} className="flex items-start text-[#0F1626]">
                       <svg className="w-5 h-5 text-[#4F5F73] mr-3 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>

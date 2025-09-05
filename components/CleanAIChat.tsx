@@ -2,8 +2,8 @@
 
 import { useState, FormEvent, useRef, useEffect, useCallback, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { processAIForTasks, processAITaskCommand, TaskCreationResult } from '@/lib/ai-task-service'
-import { emitTaskCreated } from '@/lib/use-ai-task-integration'
+import { Send } from 'lucide-react'
+import { analyzeAndCreateTask, type TaskIntentResult } from '@/lib/gemini-task-intent'
 import { createEnhancedContext, createTaskPrompt, logContextInfo, type EnhancedUserContext } from '@/lib/ai-context-provider'
 
 interface CleanAIChatProps {
@@ -30,27 +30,94 @@ interface Message {
   content: string
   type: 'user' | 'ai' | 'error'
   timestamp: Date
-  taskResult?: TaskCreationResult // For task creation messages
-  hasTask?: boolean // Indicates if this AI message created a task
-  isTaskCreated?: boolean // Indicates if this AI message confirmed task creation
-  taskId?: string // ID of the created task
+  taskResult?: TaskIntentResult
+  hasTask?: boolean
+  isTaskCreated?: boolean
+  taskId?: string
 }
 
 export default function CleanAIChat({ className = '', userContext, sessionId }: CleanAIChatProps) {
   // Core states
   const [question, setQuestion] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [currentSessionId, setCurrentSessionId] = useState(sessionId)
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(sessionId || null)
   const [messages, setMessages] = useState<Message[]>([])
-  const [isUserNearBottom, setIsUserNearBottom] = useState(true)
+  
+  // Typing animation states
+  const [typingText, setTypingText] = useState('')
+  const [isTyping, setIsTyping] = useState(true)
+  const [isFocused, setIsFocused] = useState(false)
   
   // Refs
   const chatContainerRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const lastMessageRef = useRef<HTMLDivElement>(null)
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const API_BASE_URL = process.env.NEXT_PUBLIC_GEMINI_API_URL || 'http://127.0.0.1:8000'
+
+  // Typing animation effect
+  useEffect(() => {
+    const fullText = "Ask Swiftly…"
+    let currentIndex = 0
+    
+    const typeText = () => {
+      if (currentIndex < fullText.length) {
+        setTypingText(fullText.slice(0, currentIndex + 1))
+        currentIndex++
+        typingTimeoutRef.current = setTimeout(typeText, 120) // 120ms per letter
+      } else {
+        // Wait a bit before restarting
+        typingTimeoutRef.current = setTimeout(() => {
+          setTypingText('')
+          currentIndex = 0
+          if (isTyping && !isFocused && !question.trim()) {
+            typeText()
+          }
+        }, 2000) // 2 second pause before restart
+      }
+    }
+
+    if (isTyping && !isFocused && !question.trim()) {
+      typeText()
+    }
+
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current)
+      }
+    }
+  }, [isTyping, isFocused, question])
+
+  // Handle focus events
+  const handleFocus = () => {
+    setIsFocused(true)
+    setIsTyping(false)
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current)
+    }
+  }
+
+  const handleBlur = () => {
+    setIsFocused(false)
+    if (!question.trim()) {
+      setIsTyping(true)
+    }
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuestion(e.target.value)
+    if (e.target.value.trim()) {
+      setIsTyping(false)
+    } else {
+      setIsTyping(true)
+    }
+  }
+
+
+
+
 
   // Check if user is near bottom of chat
   const checkIfNearBottom = useCallback(() => {
@@ -58,7 +125,6 @@ export default function CleanAIChat({ className = '', userContext, sessionId }: 
       const container = chatContainerRef.current
       const threshold = 150 // pixels from bottom
       const isNear = container.scrollHeight - container.scrollTop - container.clientHeight <= threshold
-      setIsUserNearBottom(isNear)
       return isNear
     }
     return true
@@ -76,7 +142,7 @@ export default function CleanAIChat({ className = '', userContext, sessionId }: 
 
   // Smooth scroll to bottom without affecting existing messages
   const scrollToBottom = useCallback((force: boolean = false) => {
-    if (chatContainerRef.current && (isUserNearBottom || force)) {
+    if (chatContainerRef.current && (checkIfNearBottom() || force)) {
       const container = chatContainerRef.current
       const targetScrollTop = container.scrollHeight - container.clientHeight
       
@@ -86,7 +152,7 @@ export default function CleanAIChat({ className = '', userContext, sessionId }: 
         behavior: 'smooth'
       })
     }
-  }, [isUserNearBottom])
+  }, [checkIfNearBottom])
 
   // Auto-scroll only when new messages arrive and user is near bottom
   useEffect(() => {
@@ -114,29 +180,9 @@ export default function CleanAIChat({ className = '', userContext, sessionId }: 
     }
   }, [handleScroll])
 
-  // Auto-resize textarea without affecting scroll or layout
-  const handleTextareaResize = useCallback(() => {
-    if (inputRef.current) {
-      const textarea = inputRef.current
-      const previousScrollTop = chatContainerRef.current?.scrollTop || 0
-      
-      // Reset height to calculate new height
-      textarea.style.height = 'auto'
-      const newHeight = Math.min(textarea.scrollHeight, 120)
-      textarea.style.height = newHeight + 'px'
-      
-      // Restore scroll position to prevent jump
-      if (chatContainerRef.current) {
-        chatContainerRef.current.scrollTop = previousScrollTop
-      }
-    }
-  }, [])
 
-  useEffect(() => {
-    handleTextareaResize()
-  }, [question, handleTextareaResize])
 
-  // Add a new message to the chat without affecting existing messages
+  // Add a new message to the chat
   const addMessage = useCallback((
     content: string, 
     type: 'user' | 'ai' | 'error', 
@@ -161,9 +207,15 @@ export default function CleanAIChat({ className = '', userContext, sessionId }: 
       )
       
       if (isDuplicate) return prev
-      
       return [...prev, message]
     })
+  }, [])
+
+  // Clear all messages
+  const clearMessages = useCallback(() => {
+    setMessages([])
+    setQuestion('')
+    setIsLoading(false)
   }, [])
 
   const handleSubmit = useCallback(async (e: FormEvent<HTMLFormElement>) => {
@@ -181,6 +233,90 @@ export default function CleanAIChat({ className = '', userContext, sessionId }: 
     setIsLoading(true)
 
     try {
+      // Check for task creation intent FIRST, before AI processing
+      if (userContext?.user_id) {
+        try {
+          const intentResult = await analyzeAndCreateTask(userQuestion, userContext.user_id)
+          
+          if (intentResult.taskCreated && intentResult.taskId) {
+            console.log('✅ Task created:', intentResult.taskName)
+            
+            // Generate natural, conversational responses with task details
+            let baseResponses = [
+              `Perfect! I've added "${intentResult.taskName}"`,
+              `Got it! "${intentResult.taskName}" is ready`,
+              `Done! Your "${intentResult.taskName}" task has been created`,
+              `All set! I've added "${intentResult.taskName}"`,
+              `Great! "${intentResult.taskName}" is now on your list`,
+              `Sure thing! I've created "${intentResult.taskName}"`,
+              `Absolutely! "${intentResult.taskName}" has been added`,
+              `You got it! Your "${intentResult.taskName}" task is ready`,
+              `Consider it done! "${intentResult.taskName}" is on your list`
+            ]
+            
+            let response = baseResponses[Math.floor(Math.random() * baseResponses.length)]
+            
+            // Add natural details if available
+            const details = []
+            if (intentResult.dueDate) {
+              const date = new Date(intentResult.dueDate)
+              const dateStr = date.toLocaleDateString()
+              const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              if (intentResult.dueDate.includes(':')) {
+                details.push(`due ${dateStr} at ${timeStr}`)
+              } else {
+                details.push(`due ${dateStr}`)
+              }
+            }
+            if (intentResult.priority && intentResult.priority !== 'medium') {
+              details.push(`${intentResult.priority} priority`)
+            }
+            if (intentResult.tags && intentResult.tags.length > 0) {
+              details.push(`tagged as ${intentResult.tags.join(', ')}`)
+            }
+            if (intentResult.assignees && intentResult.assignees.length > 0) {
+              details.push(`assigned to ${intentResult.assignees.join(', ')}`)
+            }
+            
+            if (details.length > 0) {
+              response += ` with ${details.join(', ')}.`
+            } else {
+              response += ` to your tasks.`
+            }
+            
+            addMessage(response, 'ai')
+            return // Skip normal AI processing entirely
+            
+          } else if (intentResult.hasTaskIntent && intentResult.needsClarity) {
+            console.log('⚠️ Task intent detected but needs clarity')
+            
+            // Ask for task name naturally like a personal assistant
+            const clarityResponses = [
+              'What should I call this task?',
+              'What would you like to name this task?',
+              'What name should I give this task?',
+              'How would you like me to label this?',
+              'What do you want to call it?',
+              'What name works best for this task?',
+              'How should I title this task?',
+              'What would be a good name for this?'
+            ]
+            
+            // Use clarification message from Gemini if provided, otherwise use random response
+            const clarityMessage = intentResult.clarificationMessage || 
+              clarityResponses[Math.floor(Math.random() * clarityResponses.length)]
+            
+            addMessage(clarityMessage, 'ai')
+            return // Skip normal AI processing entirely
+          }
+        } catch (error) {
+          console.error('Task creation error:', error)
+          // Continue with normal AI processing if task creation fails
+        }
+      }
+
+      // Only proceed with normal AI chat if no task was processed
+      
       // Create enhanced context with real-time information
       let enhancedContext: EnhancedUserContext | null = null
       let enhancedPrompt = userQuestion
@@ -193,15 +329,12 @@ export default function CleanAIChat({ className = '', userContext, sessionId }: 
           userContext.reminders
         )
         
-        // Create task-aware prompt with real-time context
         enhancedPrompt = createTaskPrompt(userQuestion, enhancedContext)
-        
-        // Log context for debugging
         logContextInfo(enhancedContext)
       }
       
       const requestBody: any = {
-        content: enhancedPrompt // Use enhanced prompt instead of raw user question
+        content: enhancedPrompt
       }
 
       if (userContext) {
@@ -229,82 +362,6 @@ export default function CleanAIChat({ className = '', userContext, sessionId }: 
       
       if (data.session_id) {
         setCurrentSessionId(data.session_id)
-      }
-
-      // Process AI response for comprehensive task operations with enhanced context
-      if (userContext?.user_id && enhancedContext) {
-        try {
-          console.log('Processing AI response for comprehensive task operations with real-time context...')
-          const taskResult = await processAITaskCommand(
-            userContext.user_id,
-            userQuestion,
-            data.response,
-            enhancedContext.realTime // Pass real-time context for better date parsing
-          )
-          
-          if (taskResult.success && taskResult.task) {
-            // Generate a friendly, natural confirmation message to append to AI response
-            const friendlyConfirmations = [
-              `Got it! I created a task named '${taskResult.task.title}' for you.`,
-              `All set! '${taskResult.task.title}' is now on your tasks page.`,
-              `Done! I've added '${taskResult.task.title}' to your tasks.`,
-              `Perfect! Task '${taskResult.task.title}' has been created.`,
-              `✅ Created! '${taskResult.task.title}' is ready on your task list.`,
-              `Task created! You'll find '${taskResult.task.title}' in your tasks now.`
-            ]
-            
-            // Build the confirmation message with task details
-            let confirmationMessage = friendlyConfirmations[Math.floor(Math.random() * friendlyConfirmations.length)]
-            
-            // Add due date info if available
-            if (taskResult.task.dueDate) {
-              const dueDateStr = taskResult.task.dueDate.toLocaleDateString('en-US', { 
-                weekday: 'short', 
-                month: 'short', 
-                day: 'numeric' 
-              })
-              confirmationMessage += ` Due date is set for ${dueDateStr}.`
-            }
-            
-            // Add priority info if high priority
-            if (taskResult.task.priority === 'high') {
-              confirmationMessage += ` I've marked it as high priority.`
-            }
-            
-            // Replace the AI's response with our friendly confirmation
-            setMessages(prev => {
-              const updatedMessages = [...prev]
-              // Find and update the last AI message
-              for (let i = updatedMessages.length - 1; i >= 0; i--) {
-                if (updatedMessages[i].type === 'ai') {
-                  updatedMessages[i] = {
-                    ...updatedMessages[i],
-                    content: confirmationMessage,
-                    hasTask: true // Mark this message as having created a task
-                  }
-                  break
-                }
-              }
-              return updatedMessages
-            })
-            
-            // Emit event for cross-component updates
-            emitTaskCreated(userContext.user_id, taskResult.task)
-            
-            console.log('Task created successfully from AI chat:', taskResult.task)
-          } else if (taskResult.detected && !taskResult.success) {
-            // Task was detected but creation failed
-            console.log('Task creation failed:', taskResult.error)
-            const errorMessage = `⚠️ I detected you wanted to create a task, but there was an issue: ${taskResult.error}`
-            addMessage(errorMessage, 'error')
-          }
-          // If not detected, no message needed - it's just regular chat
-          
-        } catch (taskError) {
-          console.error('Error in task creation process:', taskError)
-          // Don't add error message for task processing failures
-          // to avoid disrupting normal chat flow
-        }
       }
       
     } catch (err) {
@@ -414,13 +471,16 @@ export default function CleanAIChat({ className = '', userContext, sessionId }: 
           ref={chatContainerRef}
           className="flex-1 overflow-y-auto px-6 py-8"
         >
+          {/* Loading history indicator */}
+
+
           {/* Welcome message when empty */}
-          {messages.length === 0 && !isLoading && (
+                      {messages.length === 0 && !isLoading && (
             <div className="flex justify-start mb-6">
               <div className="max-w-[75%] mr-16">
                 <div className="px-4 py-3 rounded-2xl shadow-md bg-white text-gray-900 border border-gray-100">
                   <p className="text-sm leading-relaxed">
-                    Hello! I&apos;m an AI assistant. How can I help you today?
+                    Hello! I&apos;m your AI assistant. How can I help you today?
                   </p>
                 </div>
               </div>
@@ -454,47 +514,70 @@ export default function CleanAIChat({ className = '', userContext, sessionId }: 
       
       {/* Sticky Input Area */}
       <div className="flex-shrink-0 border-t border-gray-200">
-        <div className="px-6 py-4">
-          <form onSubmit={handleSubmit} className="flex items-center space-x-3">
-            {/* Input Container */}
-            <div className="flex-1 relative">
-              <textarea
+        <div className="px-6 py-6">
+          <form onSubmit={handleSubmit} className="w-full">
+            {/* Single-line Input Container */}
+            <div className="relative w-full">
+              <input
                 ref={inputRef}
+                type="text"
                 value={question}
-                onChange={(e) => setQuestion(e.target.value)}
+                onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask me anything…"
-                className="w-full px-4 py-3 pr-12 text-sm border border-gray-300 rounded-2xl focus:ring-2 focus:ring-[#111C59] focus:border-[#111C59] placeholder-gray-400 resize-none overflow-hidden min-h-[48px] max-h-[120px] shadow-sm"
+                onFocus={handleFocus}
+                onBlur={handleBlur}
+                placeholder=""
+                className="w-full border border-gray-300 rounded-full px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-[#111C59] focus:border-[#111C59] bg-white transition-all duration-200"
                 disabled={isLoading}
-                rows={1}
-                style={{ height: 'auto' }}
+                aria-label="Ask Swiftly anything"
               />
-              {/* Microphone Icon */}
+              
+              {/* Custom Typing Placeholder */}
+              {!question.trim() && !isFocused && (
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                  <span className="inline-block">
+                    {typingText}
+                    <span className="animate-pulse">|</span>
+                  </span>
+                </div>
+              )}
+              
+              {/* Dynamic Button - Speaking or Send */}
               <button
-                type="button"
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 transition-colors duration-200"
-                aria-label="Voice input"
+                type="submit"
+                disabled={isLoading}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-[#111C59] hover:bg-[#0F1626] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label={question.trim() ? "Send message" : "Start speaking"}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                </svg>
+                {isLoading ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin transition-opacity duration-300"></div>
+                ) : question.trim() ? (
+                  // Send Button (when text is present) - Upward Arrow
+                  <svg className="w-4 h-4 text-white transition-all duration-300 ease-in-out" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                  </svg>
+                ) : (
+                  // Speaking SVG (when input is empty) - 3 Bar Waveform
+                  <svg className="w-4 h-4 text-white transition-all duration-300 ease-in-out" viewBox="0 0 16 16" fill="currentColor">
+                    {/* Bar 1 - Left */}
+                    <rect x="2" y="8" width="2" height="6" rx="1">
+                      <animate attributeName="height" values="6;2;6" dur="1.3s" repeatCount="indefinite" />
+                      <animate attributeName="y" values="8;12;8" dur="1.3s" repeatCount="indefinite" />
+                    </rect>
+                    {/* Bar 2 - Center */}
+                    <rect x="7" y="6" width="2" height="8" rx="1">
+                      <animate attributeName="height" values="8;4;8" dur="1.1s" repeatCount="indefinite" />
+                      <animate attributeName="y" values="6;10;6" dur="1.1s" repeatCount="indefinite" />
+                    </rect>
+                    {/* Bar 3 - Right */}
+                    <rect x="12" y="7" width="2" height="7" rx="1">
+                      <animate attributeName="height" values="7;3;7" dur="1.5s" repeatCount="indefinite" />
+                      <animate attributeName="y" values="7;11;7" dur="1.5s" repeatCount="indefinite" />
+                    </rect>
+                  </svg>
+                )}
               </button>
             </div>
-            
-            {/* Send Button */}
-            <button
-              type="submit"
-              disabled={isLoading || !question.trim()}
-              className="flex-shrink-0 w-12 h-14 bg-gradient-to-r from-[#111C59] to-[#4F5F73] text-white rounded-2xl hover:shadow-lg focus:ring-2 focus:ring-[#111C59] focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-md"
-            >
-              {isLoading ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-              )}
-            </button>
           </form>
         </div>
       </div>
