@@ -111,6 +111,7 @@ temp/
 
 # Environment variables - NEVER commit these to Git!
 .env
+.env.local
 .env.development.local
 .env.test.local
 .env.production.local

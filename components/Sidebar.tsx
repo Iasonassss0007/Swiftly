@@ -215,7 +215,7 @@ export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }
                   onClick={() => toggleAccordion(item.id)}
                   className={`w-full flex items-center ${collapsed ? 'justify-center px-1 py-2' : 'justify-between pl-2 pr-3 py-2'} rounded-md text-sm font-medium transition-all duration-300 ease-in-out ${
                     isActive(item.href)
-                      ? 'bg-[#111C59]/10 text-[#111C59] border border-[#111C59]/20'
+                      ? collapsed ? 'active-link-collapsed' : 'active-link'
                       : 'text-[#0F1626] hover:bg-[#111C59]/5 hover:text-[#111C59]'
                   }`}
                   aria-expanded={openAccordions.has(item.id)}
@@ -271,9 +271,9 @@ export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }
                         <Link
                           key={subItem.id}
                           href={subItem.href}
-                          className={`block pl-2 pr-4 py-2 rounded-md text-sm ${
+                          className={`block pl-2 pr-4 py-2 rounded-md text-sm transition-all duration-200 ${
                             isActive(subItem.href)
-                              ? 'bg-[#111C59]/10 text-[#111C59] border border-[#111C59]/20'
+                              ? 'active-link'
                               : 'text-[#4F5F73] hover:bg-[#111C59]/5 hover:text-[#111C59]'
                           }`}
                           aria-label={`${subItem.label} submenu item`}
@@ -293,7 +293,7 @@ export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }
                 href={item.href}
                 className={`flex items-center ${collapsed ? 'justify-center px-1 py-2' : 'pl-2 pr-3 py-2'} rounded-md text-sm font-medium transition-all duration-300 ease-in-out ${
                   isActive(item.href)
-                    ? 'bg-[#111C59]/10 text-[#111C59] border border-[#111C59]/20'
+                    ? collapsed ? 'active-link-collapsed' : 'active-link'
                     : 'text-[#0F1626] hover:bg-[#111C59]/5 hover:text-[#111C59]'
                 }`}
                 aria-label={item.label}

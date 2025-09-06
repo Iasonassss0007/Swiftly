@@ -48,6 +48,46 @@
   }
   
   /* Additional scrollbar hiding for calendar specific areas */
+  
+  /* Enhanced Active Link Styles */
+  .active-link {
+    @apply text-[#111C59] font-medium shadow-sm;
+    position: relative;
+    border-left: 3px solid #111C59;
+    background: linear-gradient(90deg, rgba(17, 28, 89, 0.12) 0%, rgba(17, 28, 89, 0.04) 100%);
+  }
+  
+  .active-link::before {
+    content: '';
+    position: absolute;
+    left: -3px;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, #111C59 0%, #4F5F73 100%);
+    border-radius: 0 2px 2px 0;
+  }
+  
+  .active-link-collapsed {
+    @apply text-[#111C59] font-medium shadow-sm;
+    position: relative;
+    border: 2px solid rgba(17, 28, 89, 0.2);
+    background: linear-gradient(135deg, rgba(17, 28, 89, 0.15) 0%, rgba(17, 28, 89, 0.08) 100%);
+  }
+  
+  .active-link-collapsed::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: -6px;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-left: 5px solid #111C59;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+  }
+  
   .calendar-container * {
     scrollbar-width: none !important;
     -ms-overflow-style: none !important;
