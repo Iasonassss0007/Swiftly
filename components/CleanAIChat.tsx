@@ -233,94 +233,8 @@ export default function CleanAIChat({ className = '', userContext, sessionId }: 
     setIsLoading(true)
 
     try {
-      // Check for task creation intent FIRST, before AI processing
-      if (userContext?.user_id) {
-        try {
-          const intentResult = await analyzeAndCreateTask(userQuestion, userContext.user_id)
-          
-          if (intentResult.taskCreated && intentResult.taskId) {
-            console.log('✅ Task created:', intentResult.taskName)
-            
-            // Generate natural, conversational responses with task details
-            let baseResponses = [
-              `Perfect! I've added "${intentResult.taskName}"`,
-              `Got it! "${intentResult.taskName}" is ready`,
-              `Done! Your "${intentResult.taskName}" task has been created`,
-              `All set! I've added "${intentResult.taskName}"`,
-              `Great! "${intentResult.taskName}" is now on your list`,
-              `Sure thing! I've created "${intentResult.taskName}"`,
-              `Absolutely! "${intentResult.taskName}" has been added`,
-              `You got it! Your "${intentResult.taskName}" task is ready`,
-              `Consider it done! "${intentResult.taskName}" is on your list`
-            ]
-            
-            let response = baseResponses[Math.floor(Math.random() * baseResponses.length)]
-            
-            // Add natural details if available
-            const details = []
-            if (intentResult.dueDate) {
-              const date = new Date(intentResult.dueDate)
-              const dateStr = date.toLocaleDateString()
-              const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-              if (intentResult.dueDate.includes(':')) {
-                details.push(`due ${dateStr} at ${timeStr}`)
-              } else {
-                details.push(`due ${dateStr}`)
-              }
-            }
-            if (intentResult.priority && intentResult.priority !== 'medium') {
-              details.push(`${intentResult.priority} priority`)
-            }
-            if (intentResult.tags && intentResult.tags.length > 0) {
-              details.push(`tagged as ${intentResult.tags.join(', ')}`)
-            }
-            if (intentResult.assignees && intentResult.assignees.length > 0) {
-              details.push(`assigned to ${intentResult.assignees.join(', ')}`)
-            }
-            
-            if (details.length > 0) {
-              response += ` with ${details.join(', ')}.`
-            } else {
-              response += ` to your tasks.`
-            }
-            
-            addMessage(response, 'ai')
-            return // Skip normal AI processing entirely
-            
-          } else if (intentResult.hasTaskIntent && intentResult.needsClarity) {
-            console.log('⚠️ Task intent detected but needs clarity')
-            
-            // Ask for task name naturally like a personal assistant
-            const clarityResponses = [
-              'What should I call this task?',
-              'What would you like to name this task?',
-              'What name should I give this task?',
-              'How would you like me to label this?',
-              'What do you want to call it?',
-              'What name works best for this task?',
-              'How should I title this task?',
-              'What would be a good name for this?'
-            ]
-            
-            // Use clarification message from Gemini if provided, otherwise use random response
-            const clarityMessage = intentResult.clarificationMessage || 
-              clarityResponses[Math.floor(Math.random() * clarityResponses.length)]
-            
-            addMessage(clarityMessage, 'ai')
-            return // Skip normal AI processing entirely
-          }
-        } catch (error) {
-          console.error('Task creation error:', error)
-          // Continue with normal AI processing if task creation fails
-        }
-      }
-
-      // Only proceed with normal AI chat if no task was processed
-      
-      // Create enhanced context with real-time information
-      let enhancedContext: EnhancedUserContext | null = null
-      let enhancedPrompt = userQuestion
-      
+      // FIRST: Get AI conversational response (primary focus)
+      let enhancedContext = null
       if (userContext?.user_id) {
         enhancedContext = createEnhancedContext(
           userContext.user_id,
@@ -328,13 +242,11 @@ export default function CleanAIChat({ className = '', userContext, sessionId }: 
           userContext.tasks,
           userContext.reminders
         )
-        
-        enhancedPrompt = createTaskPrompt(userQuestion, enhancedContext)
         logContextInfo(enhancedContext)
       }
-      
+
       const requestBody: any = {
-        content: enhancedPrompt
+        content: userQuestion,
       }
 
       if (userContext) {
@@ -358,10 +270,31 @@ export default function CleanAIChat({ className = '', userContext, sessionId }: 
       }
 
       const data: APIResponse = await response.json()
+      
+      // Add the AI's conversational response
       addMessage(data.response, 'ai')
       
       if (data.session_id) {
         setCurrentSessionId(data.session_id)
+      }
+
+      // SECOND: Check for task creation intent (optional, secondary)
+      // Now using dedicated task intent endpoint to prevent double responses
+      if (userContext?.user_id) {
+        try {
+          const intentResult = await analyzeAndCreateTask(userQuestion, userContext.user_id)
+          
+          if (intentResult.taskCreated && intentResult.taskId) {
+            console.log('✅ Task created:', intentResult.taskName)
+            
+            // Add a simple task confirmation message
+            const taskConfirmation = `Task added: "${intentResult.taskName}"`
+            addMessage(taskConfirmation, 'ai', undefined, true, true, intentResult.taskId)
+          }
+        } catch (error) {
+          console.error('Task creation error:', error)
+          // Continue with normal AI processing if task creation fails
+        }
       }
       
     } catch (err) {
@@ -406,40 +339,54 @@ export default function CleanAIChat({ className = '', userContext, sessionId }: 
           className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-6`}
           ref={isLast ? lastMessageRef : undefined}
         >
-          <div className={`max-w-[75%] ${isUser ? 'ml-16' : 'mr-16'}`}>
-            <div className={`px-4 py-3 rounded-2xl ${
+          <div className={`${
+            isUser 
+              ? 'max-w-[75%] ml-16' 
+              : 'w-full mr-16'
+          }`}>
+            <div className={`${
               isUser 
-                ? 'bg-gradient-to-r from-[#111C59] to-[#4F5F73] text-white shadow-lg' 
+                ? 'px-4 py-3 rounded-2xl bg-gradient-to-r from-[#111C59] to-[#4F5F73] text-white shadow-lg' 
                 : isError
-                  ? 'bg-red-50 border border-red-200 text-red-800 shadow-md'
+                  ? 'px-4 py-3 rounded-2xl bg-red-50 border border-red-200 text-red-800'
                   : isTaskCreated
-                    ? 'bg-green-50 border border-green-200 text-green-800 shadow-md'
+                    ? 'px-4 py-3 rounded-2xl bg-green-50 border border-green-200 text-green-800'
                     : isAIWithTask
-                      ? 'bg-green-50 border border-green-200 text-gray-900 shadow-md'
-                      : 'bg-white text-gray-900 shadow-md border border-gray-100'
+                      ? 'px-4 py-3 rounded-2xl bg-green-50 border border-green-200 text-gray-900'
+                      : 'px-6 py-4 bg-gray-50/80 text-gray-900 rounded-xl'
             }`}>
               {isTaskCreated ? (
                 // Special styling for task creation messages
-                <div className="flex items-center space-x-2">
-                  <div className="flex-shrink-0">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0 mt-1">
                     <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap font-medium">{message.content}</p>
+                  <div className="flex-1">
+                    <p className="text-base leading-relaxed whitespace-pre-wrap font-medium">{message.content}</p>
+                  </div>
                 </div>
               ) : isAIWithTask ? (
                 // Special styling for AI messages that created tasks
-                <div className="flex items-start space-x-2">
-                  <div className="flex-shrink-0 mt-0.5">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0 mt-1">
                     <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                  <div className="flex-1">
+                    <p className="text-base leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                  </div>
                 </div>
-              ) : (
+              ) : isUser ? (
                 <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+              ) : (
+                <div className="prose prose-gray max-w-none">
+                  <p className="text-base leading-relaxed whitespace-pre-wrap m-0 text-gray-800">
+                    {message.content}
+                  </p>
+                </div>
               )}
             </div>
             {isUser && (
@@ -466,56 +413,72 @@ export default function CleanAIChat({ className = '', userContext, sessionId }: 
   return (
     <div className={`flex flex-col h-full ${className}`}>
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-gray-50">
+      <div className="flex-1 flex flex-col overflow-hidden bg-white">
         <div 
           ref={chatContainerRef}
-          className="flex-1 overflow-y-auto px-6 py-8"
+          className="flex-1 overflow-y-auto px-6 py-8 flex justify-center"
         >
-          {/* Loading history indicator */}
+          <div className="w-full max-w-4xl">
+            {/* Loading history indicator */}
 
 
-          {/* Welcome message when empty */}
-                      {messages.length === 0 && !isLoading && (
-            <div className="flex justify-start mb-6">
-              <div className="max-w-[75%] mr-16">
-                <div className="px-4 py-3 rounded-2xl shadow-md bg-white text-gray-900 border border-gray-100">
-                  <p className="text-sm leading-relaxed">
-                    Hello! I&apos;m your AI assistant. How can I help you today?
-                  </p>
-                </div>
+            {/* Welcome header when empty */}
+            {messages.length === 0 && !isLoading && (
+              <div className="flex flex-col items-center justify-center py-16 w-full max-w-4xl mx-auto">
+                {/* Main Welcome Text */}
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-[#111C59] to-[#4F5F73] bg-clip-text text-transparent text-center mb-4">
+                  Welcome to Swiftly AI
+                </h1>
+                
+                {/* Subtitle */}
+                <p className="text-lg text-[#4F5F73] text-center leading-relaxed font-medium">
+                  I'm your intelligent assistant, ready to help with questions, provide information, and assist with your tasks.
+                </p>
               </div>
-            </div>
-          )}
+            )}
+            
+            {/* Messages - Render with keys to prevent re-renders */}
+            {messages.map((message, index) => (
+              <MessageBubble key={message.id} message={message} index={index} />
+            ))}
           
-          {/* Messages - Render with keys to prevent re-renders */}
-          {messages.map((message, index) => (
-            <MessageBubble key={message.id} message={message} index={index} />
-          ))}
-          
-          {/* Loading indicator - positioned absolutely to not affect layout */}
+          {/* Loading indicator - positioned where AI response will appear */}
           {isLoading && (
             <div className="flex justify-start mb-6">
-              <div className="max-w-[75%] mr-16">
-                <div className="px-4 py-3 rounded-2xl shadow-md bg-white text-gray-900 border border-gray-100">
-                  <div className="flex items-center space-x-3">
-                    <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              <div className="w-full mr-16">
+                <div className="px-6 py-4 bg-gray-50/80 text-gray-900 rounded-xl">
+                  <div className="flex items-center space-x-4">
+                    {/* Modern AI Thinking Loader */}
+                    <div className="relative flex-shrink-0">
+                      {/* Outer rotating ring */}
+                      <div className="w-8 h-8 rounded-full border-2 border-gray-200 border-t-[#111C59] animate-spin"></div>
+                      
+                      {/* Inner pulsing gradient orb */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-4 h-4 rounded-full bg-gradient-to-r from-[#111C59] to-[#4F5F73] animate-pulse opacity-80"></div>
+                      </div>
+                      
+                      {/* Subtle glow effect */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-6 h-6 rounded-full bg-gradient-to-r from-[#111C59]/20 to-[#4F5F73]/20 animate-ping"></div>
+                      </div>
                     </div>
-                    <span className="text-sm text-gray-500">AI is thinking...</span>
+                    
+                    {/* AI is thinking text */}
+                    <span className="text-base text-gray-600 font-medium animate-pulse">AI is thinking...</span>
                   </div>
                 </div>
               </div>
             </div>
           )}
+          </div>
         </div>
       </div>
       
       {/* Sticky Input Area */}
-      <div className="flex-shrink-0 border-t border-gray-200">
-        <div className="px-6 py-6">
-          <form onSubmit={handleSubmit} className="w-full">
+      <div className="flex-shrink-0 bg-white">
+        <div className="flex justify-center px-6 py-6">
+          <form onSubmit={handleSubmit} className="w-full max-w-4xl">
             {/* Single-line Input Container */}
             <div className="relative w-full">
               <input

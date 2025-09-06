@@ -51,41 +51,41 @@ export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }
       id: 'home',
       label: 'Home',
       href: '/dashboard',
-      icon: <Home className="w-5 h-5" />
+      icon: <Home className="w-4 h-4" />
     },
     {
       id: 'tasks',
       label: 'Tasks',
       href: '/dashboard/tasks',
-      icon: <ListChecks className="w-5 h-5" />
+      icon: <ListChecks className="w-4 h-4" />
     },
     {
       id: 'calendar',
       label: 'Calendar',
       href: '/dashboard/calendar',
-      icon: <Calendar className="w-5 h-5" />,
+      icon: <Calendar className="w-4 h-4" />,
       subItems: [
-        { id: 'events', label: 'Events', href: '/dashboard/calendar/events', icon: <Calendar className="w-4 h-4" /> },
-        { id: 'meetings', label: 'Meetings', href: '/dashboard/calendar/meetings', icon: <Calendar className="w-4 h-4" /> }
+        { id: 'events', label: 'Events', href: '/dashboard/calendar/events', icon: <Calendar className="w-3 h-3" /> },
+        { id: 'meetings', label: 'Meetings', href: '/dashboard/calendar/meetings', icon: <Calendar className="w-3 h-3" /> }
       ]
     },
     {
       id: 'ai',
       label: 'Swiftly AI',
       href: '/dashboard/ai',
-      icon: <MessageSquare className="w-5 h-5" />
+      icon: <MessageSquare className="w-4 h-4" />
     },
     {
       id: 'integrations',
       label: 'Integrations',
       href: '/dashboard/integrations',
-      icon: <Plug className="w-5 h-5" />
+      icon: <Plug className="w-4 h-4" />
     },
     {
       id: 'billing',
       label: 'Billing',
       href: '/dashboard/billing',
-      icon: <CreditCard className="w-5 h-5" />
+      icon: <CreditCard className="w-4 h-4" />
     }
   ]
 
@@ -139,8 +139,8 @@ export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }
 
   return (
     <motion.aside
-      initial={{ width: collapsed ? 64 : 220 }}
-      animate={{ width: collapsed ? 64 : 220 }}
+      initial={{ width: collapsed ? 56 : 220 }}
+      animate={{ width: collapsed ? 56 : 220 }}
       transition={{ 
         type: "spring",
         damping: 30,
@@ -206,14 +206,14 @@ export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-2 py-6 space-y-3">
+      <nav className="flex-1 px-2 py-4 space-y-2">
         {navigationItems.map((item, index) => (
           <div key={item.id}>
             {item.subItems ? (
               <div>
                 <button
                   onClick={() => toggleAccordion(item.id)}
-                  className={`w-full flex items-center ${collapsed ? 'justify-center px-2 py-3' : 'justify-between pl-2 pr-4 py-3'} rounded-md text-sm font-medium transition-all duration-300 ease-in-out ${
+                  className={`w-full flex items-center ${collapsed ? 'justify-center px-1 py-2' : 'justify-between pl-2 pr-3 py-2'} rounded-md text-sm font-medium transition-all duration-300 ease-in-out ${
                     isActive(item.href)
                       ? 'bg-[#111C59]/10 text-[#111C59] border border-[#111C59]/20'
                       : 'text-[#0F1626] hover:bg-[#111C59]/5 hover:text-[#111C59]'
@@ -226,7 +226,7 @@ export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }
                     <span className="flex-shrink-0">{item.icon}</span>
                   ) : (
                     <>
-                      <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-2">
                         <span className="flex-shrink-0">{item.icon}</span>
                         <AnimatePresence>
                           {!collapsed && (
@@ -291,7 +291,7 @@ export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }
             ) : (
               <Link
                 href={item.href}
-                className={`flex items-center ${collapsed ? 'justify-center px-2 py-3' : 'pl-2 pr-4 py-3'} rounded-md text-sm font-medium transition-all duration-300 ease-in-out ${
+                className={`flex items-center ${collapsed ? 'justify-center px-1 py-2' : 'pl-2 pr-3 py-2'} rounded-md text-sm font-medium transition-all duration-300 ease-in-out ${
                   isActive(item.href)
                     ? 'bg-[#111C59]/10 text-[#111C59] border border-[#111C59]/20'
                     : 'text-[#0F1626] hover:bg-[#111C59]/5 hover:text-[#111C59]'
@@ -315,7 +315,7 @@ export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }
                         ease: "easeOut",
                         delay: 0.2
                       }}
-                      className="ml-3"
+                      className="ml-2"
                     >
                       {item.label}
                     </motion.span>
@@ -328,11 +328,11 @@ export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }
       </nav>
 
       {/* Profile Section */}
-      <div className="border-t border-[#ADB3BD]/30 p-3 mt-4">
+      <div className="border-t border-[#ADB3BD]/30 p-2 mt-3">
         <div className="relative" ref={profileDropdownRef}>
           <button
             onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-            className={`w-full flex items-center ${collapsed ? 'justify-center px-2 py-3' : 'space-x-3 pl-2 pr-4 py-3'} rounded-md text-sm font-medium text-[#0F1626] hover:bg-[#111C59]/5 hover:text-[#111C59]`}
+            className={`w-full flex items-center ${collapsed ? 'justify-center px-1 py-2' : 'pl-2 pr-2 py-2'} rounded-md text-xs font-medium text-[#0F1626] hover:bg-[#111C59]/5 hover:text-[#111C59] transition-colors duration-200`}
             aria-expanded={profileDropdownOpen}
             aria-haspopup="true"
             title={collapsed ? userFullName : undefined}
@@ -342,13 +342,13 @@ export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }
                 <Image
                   src={user.avatarUrl}
                   alt={userFullName}
-                  width={32}
-                  height={32}
-                  className="w-8 h-8 rounded-full"
+                  width={28}
+                  height={28}
+                  className="w-7 h-7 rounded-full"
                 />
               ) : (
-                <div className="w-8 h-8 bg-gradient-to-r from-[#111C59] to-[#4F5F73] rounded-full flex items-center justify-center shadow-lg">
-                  <span className="text-white font-medium text-sm">
+                <div className="w-7 h-7 bg-gradient-to-r from-[#111C59] to-[#4F5F73] rounded-full flex items-center justify-center shadow-lg">
+                  <span className="text-white font-medium text-xs">
                     {getUserInitials(userFullName)}
                   </span>
                 </div>
@@ -368,17 +368,17 @@ export default function Sidebar({ collapsed, onToggleCollapsed, user, onLogout }
                     ease: "easeOut",
                     delay: 0.2
                   }}
-                  className="flex-1 text-left min-w-0 flex items-center"
+                  className="flex-1 text-left flex items-center justify-between ml-2"
                 >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                  <div className="flex-1 pr-1">
+                    <p className="text-xs font-semibold text-[#0F1626] leading-tight break-words">
                       {userFullName}
                     </p>
-                    <p className="text-xs text-gray-500 truncate" title={userEmail}>
+                    <p className="text-xs text-[#4F5F73] leading-tight mt-0.5 break-all opacity-75">
                       {userEmail}
                     </p>
                   </div>
-                  <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0 ml-2" />
+                  <ChevronDown className="w-3 h-3 text-[#4F5F73] flex-shrink-0" />
                 </motion.div>
               )}
             </AnimatePresence>

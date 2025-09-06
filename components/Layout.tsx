@@ -102,7 +102,7 @@ export default function Layout({ children, user }: LayoutProps) {
         <main 
           className={`flex-1 overflow-auto bg-[#F8FAFC] transition-all duration-300 ease-out ${
             sidebarCollapsed 
-              ? 'ml-[64px]' 
+              ? 'ml-[56px]' 
               : 'ml-[220px]'
           }`}
         >
@@ -153,7 +153,7 @@ export default function Layout({ children, user }: LayoutProps) {
             {/* Enhanced Mobile Sidebar */}
             <motion.div
               initial={{
-                x: sidebarCollapsed ? -64 : -320,
+                x: sidebarCollapsed ? -56 : -220,
                 opacity: 0,
                 scale: 0.95
               }}
@@ -163,7 +163,7 @@ export default function Layout({ children, user }: LayoutProps) {
                 scale: 1
               }}
               exit={{
-                x: sidebarCollapsed ? -64 : -320,
+                x: sidebarCollapsed ? -56 : -220,
                 opacity: 0,
                 scale: 0.95
               }}
@@ -175,7 +175,7 @@ export default function Layout({ children, user }: LayoutProps) {
                 duration: 0.4
               }}
               className="fixed left-0 top-0 h-full bg-white/98 backdrop-blur-xl border-r border-[#ADB3BD]/20 z-50 lg:hidden sidebar shadow-2xl"
-              style={{ width: sidebarCollapsed ? 64 : 320 }}
+              style={{ width: sidebarCollapsed ? 56 : 220 }}
             >
               <Sidebar
                 collapsed={sidebarCollapsed}

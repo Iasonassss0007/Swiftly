@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, Plus, List, Grid3X3, BarChart3 } from 'lucide-react'
+import { Search, Plus, List, Grid3X3, BarChart3, Calendar } from 'lucide-react'
 
-export type TaskView = 'list' | 'kanban' | 'gantt'
+export type TaskView = 'list' | 'kanban' | 'gantt' | 'calendar'
 
 interface TasksPageHeaderProps {
   searchTerm: string
@@ -23,7 +23,8 @@ export default function TasksPageHeader({
   const viewOptions = [
     { id: 'list', label: 'List', icon: List },
     { id: 'kanban', label: 'Kanban', icon: Grid3X3 },
-    { id: 'gantt', label: 'Gantt', icon: BarChart3 }
+    { id: 'gantt', label: 'Gantt', icon: BarChart3 },
+    { id: 'calendar', label: 'Calendar', icon: Calendar }
   ] as const
 
   return (

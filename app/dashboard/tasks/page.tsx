@@ -75,6 +75,7 @@ import { useInstantTasks } from '@/lib/use-instant-tasks'
 import { clearAllCaches } from '@/lib/task-cache'
 import KanbanBoard from '@/components/tasks/KanbanBoard'
 import GanttChart from '@/components/tasks/GanttChart'
+import TaskCalendar from '@/components/tasks/TaskCalendar'
 
 export default function TasksPage() {
   const { user, profile, loading } = useAuth()
@@ -386,10 +387,19 @@ export default function TasksPage() {
   }
 
   // Handle task movement for Kanban board
-  const handleTaskMove = (taskId: string, newStatus: string) => {
-    // This would typically update the task status in the database
-    console.log(`Moving task ${taskId} to status ${newStatus}`)
-    // You can implement the actual status update logic here
+  const handleTaskMove = async (taskId: string, newStatus: string) => {
+    const task = tasks.find(t => t.id === taskId)
+    if (task) {
+      await updateTask(taskId, { ...task, status: newStatus as Task['status'] })
+    }
+  }
+
+  // Handle task update for calendar (e.g., date changes)
+  const handleTaskUpdate = async (taskId: string, updates: Partial<Task>) => {
+    const task = tasks.find(t => t.id === taskId)
+    if (task) {
+      await updateTask(taskId, { ...task, ...updates })
+    }
   }
 
   const renderCurrentView = () => {
@@ -434,6 +444,15 @@ export default function TasksPage() {
             tasks={tasks}
             searchTerm=""
             onTaskClick={setSelectedTask}
+          />
+        )
+      case 'calendar':
+        return (
+          <TaskCalendar
+            tasks={tasks}
+            onTaskClick={setSelectedTask}
+            onTaskUpdate={handleTaskUpdate}
+            onMenuAction={handleMenuAction}
           />
         )
       default:
